@@ -10,7 +10,4 @@ export const oidcConfig: AuthProviderProps = {
   scope: "openid profile email",
   automaticSilentRenew: true,
   userStore: new WebStorageStateStore({ store: window.localStorage }),
-  onSigninCallback: () => {
-    window.history.replaceState({}, document.title, "/");
-  },
 };
