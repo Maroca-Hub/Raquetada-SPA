@@ -8,19 +8,36 @@ interface ResourceState<T> {
   loading: boolean;
 }
 
-export function useResource<T>(load: (api: Api) => Promise<T>, deps: unknown[] = []) {
+export function useResource<T>(
+  load: (api: Api) => Promise<T>,
+  deps: unknown[] = [],
+  fallback?: () => T
+) {
   const api = useApi();
-  const [state, setState] = useState<ResourceState<T>>({ data: null, error: null, loading: true });
+  const [state, setState] = useState<ResourceState<T>>({
+    data: fallback ? fallback() : null,
+    error: null,
+    loading: !fallback,
+  });
 
   useEffect(() => {
     let active = true;
+    setState((prev) => ({ ...prev, loading: true }));
+
     load(api)
       .then((result) => {
         if (active) setState({ data: result, error: null, loading: false });
       })
       .catch((err: Error) => {
-        if (active) setState({ data: null, error: err.message, loading: false });
+        if (active) {
+          if (fallback) {
+            setState({ data: fallback(), error: null, loading: false });
+          } else {
+            setState({ data: null, error: err.message, loading: false });
+          }
+        }
       });
+
     return () => {
       active = false;
     };
