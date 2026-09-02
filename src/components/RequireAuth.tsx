@@ -3,6 +3,11 @@ import { useAuth } from "react-oidc-context";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import { isDevSession } from "../devSession";
+import {
+  clearPostLoginRedirect,
+  peekPostLoginRedirect,
+  savePostLoginRedirect,
+} from "../postLoginRedirect";
 
 export function RequireAuth() {
   const auth = useAuth();
@@ -38,6 +43,17 @@ export function RequireAuth() {
     };
   }, [auth.isAuthenticated, devSession, api]);
 
+  const currentPath = location.pathname + location.search + location.hash;
+  const pendingRedirect = peekPostLoginRedirect();
+
+  useEffect(() => {
+    // Once the user is on solid ground (authenticated with a usable profile),
+    // the remembered deep link has served its purpose.
+    if ((auth.isAuthenticated || devSession) && hasProfile && pendingRedirect) {
+      clearPostLoginRedirect();
+    }
+  }, [auth.isAuthenticated, devSession, hasProfile, pendingRedirect]);
+
   if (auth.isLoading || checkingProfile) {
     return (
       <div
@@ -65,11 +81,21 @@ export function RequireAuth() {
   }
 
   if (!auth.isAuthenticated && !devSession) {
+    savePostLoginRedirect(currentPath);
     return <Navigate to="/login" replace />;
   }
 
   if (hasProfile === false && location.pathname !== "/onboarding") {
     return <Navigate to="/onboarding" replace />;
+  }
+
+  if (
+    hasProfile &&
+    location.pathname !== "/onboarding" &&
+    pendingRedirect &&
+    pendingRedirect !== currentPath
+  ) {
+    return <Navigate to={pendingRedirect} replace />;
   }
 
   return <Outlet />;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
+import { clearPostLoginRedirect, peekPostLoginRedirect } from "../postLoginRedirect";
 import { Toast } from "../components/common/Toast";
 import { Avatar } from "../components/common/Avatar";
 
@@ -8,7 +8,6 @@ const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 export function Onboarding() {
   const api = useApi();
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
@@ -76,7 +75,11 @@ export function Onboarding() {
         name: name.trim(),
         image: file ?? undefined,
       });
-      navigate("/", { replace: true });
+      // Full reload so RequireAuth re-checks the now-provisioned profile and
+      // then resumes whatever deep link brought the user through onboarding.
+      const target = peekPostLoginRedirect() ?? "/";
+      clearPostLoginRedirect();
+      window.location.assign(target);
     } catch (err) {
       setToastMessage((err as Error).message);
       setSubmitting(false);
