@@ -61,7 +61,7 @@ export function MatchCard({ match, myId, onJoin }: MatchCardProps) {
           gap: 12,
         }}
       >
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h3
             className="font-display"
             style={{
@@ -93,7 +93,7 @@ export function MatchCard({ match, myId, onJoin }: MatchCardProps) {
           </div>
         </div>
 
-        <div className="badge-court">
+        <div className="badge-court" style={{ maxWidth: "45%" }}>
           <span className="dot" />
           <span>{STATUS_LABEL[match.status] ?? match.status}</span>
         </div>

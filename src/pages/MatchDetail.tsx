@@ -183,7 +183,7 @@ export function MatchDetail() {
               gap: 12,
             }}
           >
-            <div>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <span
                 style={{
                   fontSize: "11px",
@@ -207,7 +207,7 @@ export function MatchDetail() {
                 {match.location}
               </h1>
             </div>
-            <div className="badge-court">
+            <div className="badge-court" style={{ maxWidth: "45%" }}>
               <span className="dot" />
               <span>{STATUS_LABEL[match.status] ?? match.status}</span>
             </div>
@@ -224,6 +224,27 @@ export function MatchDetail() {
               border: "1px solid var(--border-subtle)",
             }}
           >
+            <div>
+              <span
+                style={{
+                  fontSize: "11px",
+                  color: "var(--on-surface-variant)",
+                  display: "block",
+                }}
+              >
+                Vagas
+              </span>
+              <span
+                className="font-display"
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 800,
+                  color: "var(--primary-fixed)",
+                }}
+              >
+                {roster.length}/4
+              </span>
+            </div>
             <div>
               <span
                 style={{
@@ -254,27 +275,7 @@ export function MatchDetail() {
                 </span>
               </div>
             </div>
-            <div>
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: "var(--on-surface-variant)",
-                  display: "block",
-                }}
-              >
-                Vagas
-              </span>
-              <span
-                className="font-display"
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 800,
-                  color: "var(--primary-fixed)",
-                }}
-              >
-                {roster.length}/4
-              </span>
-            </div>
+
             {isFinished &&
               match.scorePair1 != null &&
               match.scorePair2 != null && (

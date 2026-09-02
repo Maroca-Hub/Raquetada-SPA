@@ -313,11 +313,20 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.badge-court > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .badge-court .dot {
   width: 6px;
   height: 6px;
+  flex-shrink: 0;
   border-radius: 50%;
   background-color: var(--primary-fixed);
   box-shadow: 0 0 6px var(--primary-fixed);
