@@ -62,7 +62,7 @@ export function Toast({
       >
         {isSuccess ? "check_circle" : isError ? "error" : "info"}
       </span>
-      <span>{message}</span>
+      <span style={{ flex: 1, minWidth: 0 }}>{message}</span>
       <button
         type="button"
         onClick={onClose}
@@ -74,6 +74,7 @@ export function Toast({
           display: "flex",
           alignItems: "center",
           marginLeft: 8,
+          flexShrink: 0,
         }}
       >
         <span
