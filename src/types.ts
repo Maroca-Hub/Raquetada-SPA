@@ -45,6 +45,12 @@ export interface PlayerInput {
 
 // ---- Matches ------------------------------------------------------------
 
+export interface RosterMemberOutput {
+  player: PlayerOutput;
+  team: number; // 1 | 2
+  position: PadelPosition;
+}
+
 export interface MatchOutput {
   id: string;
   dateTime: string; // ISO 8601
@@ -53,6 +59,7 @@ export interface MatchOutput {
   scorePair1: number | null;
   scorePair2: number | null;
   organizer: PlayerOutput;
+  roster: RosterMemberOutput[]; // ACCEPTED participants only
 }
 
 export interface CreateMatchInput {

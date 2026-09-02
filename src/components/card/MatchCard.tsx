@@ -1,10 +1,9 @@
 import { useNavigate } from "react-router-dom";
-import type { MatchOutput, ParticipationOutput } from "../../types";
+import type { MatchOutput } from "../../types";
 import { formatMatchDateTime } from "../../services/api";
 
 interface MatchCardProps {
   match: MatchOutput;
-  roster: ParticipationOutput[];
   myId: string;
   onJoin?: (matchId: string) => void;
 }
@@ -17,9 +16,10 @@ const STATUS_LABEL: Record<string, string> = {
   FINISHED: "Finalizada",
 };
 
-export function MatchCard({ match, roster, myId, onJoin }: MatchCardProps) {
+export function MatchCard({ match, myId, onJoin }: MatchCardProps) {
   const navigate = useNavigate();
 
+  const roster = match.roster;
   const confirmedCount = roster.length;
   const emptySlots = Math.max(0, MATCH_CAPACITY - confirmedCount);
   const isOrganizer = match.organizer.id === myId;
@@ -115,7 +115,7 @@ export function MatchCard({ match, roster, myId, onJoin }: MatchCardProps) {
         <div style={{ display: "flex", alignItems: "center" }}>
           {roster.map((part, index) => (
             <div
-              key={part.id}
+              key={`${part.team}-${part.position}`}
               title={`${part.player.name} · GRL ${part.player.rating}`}
               style={{
                 width: 38,

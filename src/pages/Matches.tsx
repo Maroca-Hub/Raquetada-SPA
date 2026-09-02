@@ -4,7 +4,7 @@ import { MatchCard } from "../components/card/MatchCard";
 import { CreateMatchModal } from "../components/match/CreateMatchModal";
 import { Toast } from "../components/common/Toast";
 import { useApi } from "../hooks/useApi";
-import type { MatchOutput, MatchStatus, ParticipationOutput } from "../types";
+import type { MatchOutput, MatchStatus } from "../types";
 
 type StatusFilter = MatchStatus | "ALL";
 
@@ -20,7 +20,6 @@ export function Matches() {
 
   const [selectedFilter, setSelectedFilter] = useState<StatusFilter>("ALL");
   const [matches, setMatches] = useState<MatchOutput[]>([]);
-  const [rosters, setRosters] = useState<Record<string, ParticipationOutput[]>>({});
   const [myId, setMyId] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,24 +32,12 @@ export function Matches() {
         api.players.getMyProfile(),
         api.matches.list(selectedFilter === "ALL" ? undefined : { status: selectedFilter }),
       ]);
-      setMyId(me.id);
-
-      const rosterEntries = await Promise.all(
-        matchList.map(async (m) => {
-          try {
-            return [m.id, await api.matches.listParticipations(m.id)] as const;
-          } catch {
-            return [m.id, [] as ParticipationOutput[]] as const;
-          }
-        })
-      );
       setError(null);
+      setMyId(me.id);
       setMatches(matchList);
-      setRosters(Object.fromEntries(rosterEntries));
     } catch (err) {
       setError((err as Error).message);
       setMatches([]);
-      setRosters({});
     } finally {
       setLoading(false);
     }
@@ -65,7 +52,7 @@ export function Matches() {
 
   const handleJoin = async (matchId: string) => {
     // Joining needs a slot; take the first free one.
-    const roster = rosters[matchId] ?? [];
+    const roster = matches.find((m) => m.id === matchId)?.roster ?? [];
     const taken = new Set(roster.map((p) => `${p.team}-${p.position}`));
     const slot = (["1-DRIVE", "1-REVES", "2-DRIVE", "2-REVES"] as const).find((s) => !taken.has(s));
     if (!slot) {
@@ -204,13 +191,7 @@ export function Matches() {
             </div>
           ) : (
             matches.map((match) => (
-              <MatchCard
-                key={match.id}
-                match={match}
-                roster={rosters[match.id] ?? []}
-                myId={myId}
-                onJoin={handleJoin}
-              />
+              <MatchCard key={match.id} match={match} myId={myId} onJoin={handleJoin} />
             ))
           )}
         </section>

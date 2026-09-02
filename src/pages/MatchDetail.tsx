@@ -14,7 +14,7 @@ import type {
   EvaluationOutput,
   MatchOutput,
   PadelPosition,
-  ParticipationOutput,
+  RosterMemberOutput,
   Skill,
 } from "../types";
 
@@ -40,7 +40,6 @@ export function MatchDetail() {
 
   const [myId, setMyId] = useState("");
   const [match, setMatch] = useState<MatchOutput | null>(null);
-  const [roster, setRoster] = useState<ParticipationOutput[]>([]);
   const [evaluations, setEvaluations] = useState<EvaluationOutput[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -48,15 +47,13 @@ export function MatchDetail() {
 
   const loadData = useCallback(async () => {
     try {
-      const [me, matchOutput, rosterOutput] = await Promise.all([
+      const [me, matchOutput] = await Promise.all([
         api.players.getMyProfile(),
         api.matches.get(matchId),
-        api.matches.listParticipations(matchId),
       ]);
       setNotFound(false);
       setMyId(me.id);
       setMatch(matchOutput);
-      setRoster(rosterOutput);
 
       if (matchOutput.status === "FINISHED") {
         try {
@@ -127,9 +124,9 @@ export function MatchDetail() {
     );
   }
 
+  const roster = match.roster;
   const isOrganizer = match.organizer.id === myId;
-  const myParticipation = roster.find((p) => p.player.id === myId);
-  const isConfirmed = Boolean(myParticipation);
+  const isConfirmed = roster.some((p) => p.player.id === myId);
   const isFull = roster.length >= 4;
   const isFinished = match.status === "FINISHED";
   const slotOf = (team: number, position: PadelPosition) =>
@@ -479,7 +476,7 @@ function CourtLineup({
   slotOf: (
     team: number,
     position: PadelPosition,
-  ) => ParticipationOutput | undefined;
+  ) => RosterMemberOutput | undefined;
   myId: string;
   canPickSlot: (team: number, position: PadelPosition) => boolean;
   onPickSlot: (team: number, position: PadelPosition) => void;
@@ -554,7 +551,7 @@ function CourtCell({
   clickable,
   onClick,
 }: {
-  part?: ParticipationOutput;
+  part?: RosterMemberOutput;
   isMe: boolean;
   isTopRow: boolean;
   isLeftCol: boolean;
@@ -794,7 +791,7 @@ function EvaluationSection({
   evaluations,
   onSubmit,
 }: {
-  roster: ParticipationOutput[];
+  roster: RosterMemberOutput[];
   myId: string;
   evaluations: EvaluationOutput[];
   onSubmit: (evaluatedPlayerId: string, scores: Record<Skill, number>) => void;
@@ -830,7 +827,7 @@ function EvaluationSection({
       {targets.map((p) =>
         evaluatedByMe.has(p.player.id) ? (
           <div
-            key={p.id}
+            key={p.player.id}
             style={{
               fontSize: "13px",
               color: "var(--on-surface-variant)",
@@ -841,7 +838,7 @@ function EvaluationSection({
           </div>
         ) : (
           <EvaluationForm
-            key={p.id}
+            key={p.player.id}
             name={p.player.name}
             onSubmit={(scores) => onSubmit(p.player.id, scores)}
           />
