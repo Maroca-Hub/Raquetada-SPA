@@ -21,10 +21,9 @@ export function Profile() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
       const me = await api.players.getMyProfile();
+      setError(null);
       setProfile(me);
       try {
         const evals = await api.players.listReceivedEvaluations(me.id);
@@ -41,7 +40,10 @@ export function Profile() {
   }, [api]);
 
   useEffect(() => {
-    loadProfile();
+    void (async () => {
+      setLoading(true);
+      await loadProfile();
+    })();
   }, [loadProfile]);
 
   const handleSignOut = async () => {
@@ -109,7 +111,10 @@ export function Profile() {
           )}
           <button
             type="button"
-            onClick={loadProfile}
+            onClick={() => {
+              setLoading(true);
+              loadProfile();
+            }}
             className="btn-secondary"
             style={{ marginTop: 12 }}
           >

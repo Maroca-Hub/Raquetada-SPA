@@ -47,14 +47,13 @@ export function MatchDetail() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
-    setNotFound(false);
     try {
       const [me, matchOutput, rosterOutput] = await Promise.all([
         api.players.getMyProfile(),
         api.matches.get(matchId),
         api.matches.listParticipations(matchId),
       ]);
+      setNotFound(false);
       setMyId(me.id);
       setMatch(matchOutput);
       setRoster(rosterOutput);
@@ -77,7 +76,10 @@ export function MatchDetail() {
   }, [api, matchId]);
 
   useEffect(() => {
-    loadData();
+    void (async () => {
+      setLoading(true);
+      await loadData();
+    })();
   }, [loadData]);
 
   if (loading) {

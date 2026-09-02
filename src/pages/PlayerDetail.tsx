@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { PlayerCard } from "../components/card/PlayerCard";
@@ -16,29 +16,35 @@ export function PlayerDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadPlayerData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const output = await api.players.get(playerId);
-      setProfile(output);
-      try {
-        const evals = await api.players.listReceivedEvaluations(playerId);
-        setEvaluationCount(evals.length);
-      } catch {
-        setEvaluationCount(null);
-      }
-    } catch (err) {
-      setError((err as Error).message);
-      setProfile(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [api, playerId]);
-
   useEffect(() => {
-    loadPlayerData();
-  }, [loadPlayerData]);
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      try {
+        const output = await api.players.get(playerId);
+        if (cancelled) return;
+        setError(null);
+        setProfile(output);
+        try {
+          const evals = await api.players.listReceivedEvaluations(playerId);
+          if (!cancelled) setEvaluationCount(evals.length);
+        } catch {
+          if (!cancelled) setEvaluationCount(null);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setError((err as Error).message);
+        setProfile(null);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api, playerId]);
 
   if (loading) {
     return (

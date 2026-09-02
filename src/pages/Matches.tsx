@@ -28,8 +28,6 @@ export function Matches() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
     try {
       const [me, matchList] = await Promise.all([
         api.players.getMyProfile(),
@@ -46,6 +44,7 @@ export function Matches() {
           }
         })
       );
+      setError(null);
       setMatches(matchList);
       setRosters(Object.fromEntries(rosterEntries));
     } catch (err) {
@@ -58,7 +57,10 @@ export function Matches() {
   }, [api, selectedFilter]);
 
   useEffect(() => {
-    loadData();
+    void (async () => {
+      setLoading(true);
+      await loadData();
+    })();
   }, [loadData]);
 
   const handleJoin = async (matchId: string) => {
@@ -162,7 +164,15 @@ export function Matches() {
             >
               <p style={{ fontWeight: 600 }}>Não foi possível carregar as partidas.</p>
               <p style={{ fontSize: "12px", color: "var(--on-surface-variant)", marginTop: 4 }}>{error}</p>
-              <button type="button" onClick={loadData} className="btn-secondary" style={{ marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoading(true);
+                  loadData();
+                }}
+                className="btn-secondary"
+                style={{ marginTop: 12 }}
+              >
                 Tentar novamente
               </button>
             </div>
