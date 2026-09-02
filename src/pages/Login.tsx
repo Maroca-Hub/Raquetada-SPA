@@ -114,29 +114,26 @@ export function Login() {
             Entrar
           </button>
 
-          {(import.meta.env.DEV ||
-            import.meta.env.VITE_ENABLE_DEV_LOGIN === "true") && (
-            <div
-              style={{
-                marginTop: 8,
-                borderTop: "1px dashed rgba(210, 240, 0, 0.25)",
-                paddingTop: 14,
-                width: "100%",
-                display: "flex",
-                flexDirection: "column",
-                gap: 8,
-              }}
+          <div
+            style={{
+              marginTop: 8,
+              borderTop: "1px dashed rgba(210, 240, 0, 0.25)",
+              paddingTop: 14,
+              width: "100%",
+              display: "flex",
+              flexDirection: "column",
+              gap: 8,
+            }}
+          >
+            <button
+              type="button"
+              onClick={handleDevLogin}
+              className="btn-secondary"
+              style={{ width: "100%", padding: "20px", fontSize: "13px" }}
             >
-              <button
-                type="button"
-                onClick={handleDevLogin}
-                className="btn-secondary"
-                style={{ width: "100%", padding: "20px", fontSize: "13px" }}
-              >
-                Entrar com conta de testes
-              </button>
-            </div>
-          )}
+              Entrar com conta de testes
+            </button>
+          </div>
         </div>
       </div>
     </div>
