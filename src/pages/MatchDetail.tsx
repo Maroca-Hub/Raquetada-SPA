@@ -1,68 +1,88 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useAuth } from "react-oidc-context";
 import { Layout } from "../components/layout/Layout";
 import { ShareButton } from "../components/common/ShareButton";
 import { Toast } from "../components/common/Toast";
 import { useApi } from "../hooks/useApi";
-import { mapMatchOutputToMatch, mapPlayerOutputToPlayer } from "../services/api";
-import { mockService, subscribeToMatches } from "../services/mockData";
-import type { Match, Player, Participation } from "../types";
+import { POSITION_LABELS, SKILL_LABELS, SKILL_ORDER, formatMatchDateTime } from "../services/api";
+import type {
+  EvaluationOutput,
+  MatchOutput,
+  PadelPosition,
+  ParticipationOutput,
+  Skill,
+} from "../types";
+
+const STATUS_LABEL: Record<string, string> = {
+  AWAITING_PLAYERS: "Aguardando jogadores",
+  SCHEDULED: "Confirmada",
+  FINISHED: "Finalizada",
+};
+
+const SLOTS: { team: number; position: PadelPosition }[] = [
+  { team: 1, position: "DRIVE" },
+  { team: 1, position: "REVES" },
+  { team: 2, position: "DRIVE" },
+  { team: 2, position: "REVES" },
+];
 
 export function MatchDetail() {
   const { id } = useParams<{ id: string }>();
-  const matchId = id || "match-1";
-  const auth = useAuth();
+  const matchId = id ?? "";
   const api = useApi();
-  const isDemo = localStorage.getItem("raquetada_demo_session") === "true";
 
-  const [currentUser, setCurrentUser] = useState<Player>(mockService.getCurrentUser());
-  const [match, setMatch] = useState<Match | undefined>(mockService.getMatchById(matchId));
+  const [myId, setMyId] = useState("");
+  const [match, setMatch] = useState<MatchOutput | null>(null);
+  const [roster, setRoster] = useState<ParticipationOutput[]>([]);
+  const [evaluations, setEvaluations] = useState<EvaluationOutput[]>([]);
   const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    if (auth.isAuthenticated) {
-      try {
-        const meOutput = await api.players.getMyProfile();
-        setCurrentUser(mapPlayerOutputToPlayer(meOutput));
+    setNotFound(false);
+    try {
+      const [me, matchOutput, rosterOutput] = await Promise.all([
+        api.players.getMyProfile(),
+        api.matches.get(matchId),
+        api.matches.listParticipations(matchId),
+      ]);
+      setMyId(me.id);
+      setMatch(matchOutput);
+      setRoster(rosterOutput);
 
-        const matchOutput = await api.matches.get(matchId);
-        const rosterOutputs = await api.matches.listParticipations(matchId);
-        setMatch(mapMatchOutputToMatch(matchOutput, rosterOutputs));
-      } catch (err) {
-        console.error("API error in MatchDetail:", err);
-        setMatch(undefined);
+      if (matchOutput.status === "FINISHED") {
+        try {
+          setEvaluations(await api.matches.listEvaluations(matchId));
+        } catch {
+          setEvaluations([]);
+        }
+      } else {
+        setEvaluations([]);
       }
-    } else if (isDemo) {
-      setMatch(mockService.getMatchById(matchId));
-      setCurrentUser(mockService.getCurrentUser());
-    } else {
-      setMatch(undefined);
+    } catch (err) {
+      if ((err as { status?: number }).status === 404) setNotFound(true);
+      setMatch(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [auth.isAuthenticated, isDemo, api, matchId]);
+  }, [api, matchId]);
 
   useEffect(() => {
     loadData();
-
-    if (!auth.isAuthenticated) {
-      const unsubscribe = subscribeToMatches(() => {
-        setMatch(mockService.getMatchById(matchId));
-      });
-      return unsubscribe;
-    }
-  }, [loadData, auth.isAuthenticated, matchId]);
+  }, [loadData]);
 
   if (loading) {
     return (
       <Layout showBack title="Carregando...">
         <div style={{ textAlign: "center", padding: "40px", color: "var(--primary-fixed)" }}>
-          <span className="material-symbols-outlined" style={{ fontSize: "32px", animation: "spin 1s linear infinite" }}>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: "32px", animation: "spin 1s linear infinite" }}
+          >
             sports_tennis
           </span>
-          <p style={{ marginTop: 8, fontSize: "13px", fontWeight: 600 }}>Carregando detalhes da partida...</p>
         </div>
       </Layout>
     );
@@ -71,114 +91,62 @@ export function MatchDetail() {
   if (!match) {
     return (
       <Layout showBack title="Partida não encontrada">
-        <div
-          className="glass-panel"
-          style={{
-            borderRadius: "16px",
-            padding: "32px 20px",
-            textAlign: "center",
-          }}
-        >
-          <p style={{ marginBottom: 16 }}>Esta partida não existe ou foi cancelada.</p>
+        <div className="glass-panel" style={{ borderRadius: "16px", padding: "32px 20px", textAlign: "center" }}>
+          <p style={{ marginBottom: 16 }}>
+            {notFound ? "Esta partida não existe." : "Não foi possível carregar a partida."}
+          </p>
           <Link to="/" className="btn-primary">
-            Voltar ao Feed
+            Voltar ao feed
           </Link>
         </div>
       </Layout>
     );
   }
 
-  const isOrganizer = match.organizer.id === currentUser.id;
+  const isOrganizer = match.organizer.id === myId;
+  const myParticipation = roster.find((p) => p.player.id === myId);
+  const isConfirmed = Boolean(myParticipation);
+  const isFull = roster.length >= 4;
+  const isFinished = match.status === "FINISHED";
+  const slotOf = (team: number, position: PadelPosition) =>
+    roster.find((p) => p.team === team && p.position === position);
 
-  const confirmedParticipations = match.participations.filter(
-    (p) => p.status === "ACCEPTED"
-  );
-  const team1Players = confirmedParticipations.filter((p) => p.team === 1);
-  const team2Players = confirmedParticipations.filter((p) => p.team === 2);
-
-  const isUserConfirmed = confirmedParticipations.some(
-    (p) => p.player.id === currentUser.id
-  );
-  const isUserPending = match.pendingRequests?.some(
-    (p) => p.player.id === currentUser.id
-  );
-  const isFull = confirmedParticipations.length >= match.maxPlayers;
-
-  const userParticipation = confirmedParticipations.find(
-    (p) => p.player.id === currentUser.id
-  );
-
-  const handleRequestJoin = async (targetTeam?: number) => {
-    if (auth.isAuthenticated) {
-      try {
-        const team = targetTeam || (team1Players.length < 2 ? 1 : 2);
-        await api.matches.join(match.id, { team });
-        setToastMessage("Você entrou na partida com sucesso!");
-        await loadData();
-      } catch (err) {
-        setToastMessage(`Erro ao entrar: ${(err as Error).message}`);
+  const handleSlotClick = async (team: number, position: PadelPosition) => {
+    if (slotOf(team, position)) return;
+    try {
+      if (!isConfirmed) {
+        if (match.status !== "AWAITING_PLAYERS") return;
+        await api.matches.join(matchId, { team, position });
+        setToastMessage("Você entrou na partida!");
+      } else {
+        await api.matches.changeSlot(matchId, { team, position });
+        setToastMessage(`Você mudou para a Dupla ${team} · ${POSITION_LABELS[position]}.`);
       }
-    } else {
-      const result = mockService.requestToJoinMatch(match.id, currentUser);
-      setToastMessage(result.message);
+      await loadData();
+    } catch (err) {
+      setToastMessage((err as Error).message);
     }
   };
 
-  const handleLeaveMatch = async () => {
-    if (auth.isAuthenticated) {
-      try {
-        await api.matches.leave(match.id);
-        setToastMessage("Você saiu da partida.");
-        await loadData();
-      } catch (err) {
-        setToastMessage(`Erro ao sair: ${(err as Error).message}`);
-      }
-    } else {
+  const handleLeave = async () => {
+    try {
+      await api.matches.leave(matchId);
       setToastMessage("Você saiu da partida.");
-    }
-  };
-
-  const handleChangeTeam = async (newTeam: number) => {
-    if (auth.isAuthenticated) {
-      try {
-        await api.matches.changeTeam(match.id, { team: newTeam });
-        setToastMessage(`Você mudou para a Dupla ${newTeam}!`);
-        await loadData();
-      } catch (err) {
-        setToastMessage(`Erro ao mudar de time: ${(err as Error).message}`);
-      }
-    }
-  };
-
-  const handleAcceptRequest = (requestId: string) => {
-    const success = mockService.acceptParticipation(match.id, requestId);
-    if (success) {
-      setToastMessage("Jogador aceito na partida com sucesso!");
-    }
-  };
-
-  const handleRejectRequest = (requestId: string) => {
-    const success = mockService.rejectParticipation(match.id, requestId);
-    if (success) {
-      setToastMessage("Solicitação recusada.");
+      await loadData();
+    } catch (err) {
+      setToastMessage((err as Error).message);
     }
   };
 
   return (
-    <Layout showBack title={match.clubName}>
+    <Layout showBack title={match.location}>
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        {/* Match Header Card */}
+        {/* Header */}
         <section
           className="glass-panel animate-fade-in"
-          style={{
-            borderRadius: "20px",
-            padding: "20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
+          style={{ borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
             <div>
               <span
                 style={{
@@ -193,24 +161,17 @@ export function MatchDetail() {
               </span>
               <h1
                 className="font-display"
-                style={{
-                  fontSize: "24px",
-                  fontWeight: 900,
-                  color: "var(--on-surface)",
-                  marginTop: 2,
-                }}
+                style={{ fontSize: "22px", fontWeight: 900, color: "var(--on-surface)", marginTop: 2 }}
               >
-                {match.clubName}
+                {match.location}
               </h1>
             </div>
-
             <div className="badge-court">
               <span className="dot" />
-              <span>{match.courtName}</span>
+              <span>{STATUS_LABEL[match.status] ?? match.status}</span>
             </div>
           </div>
 
-          {/* Key Info Grid */}
           <div
             style={{
               display: "grid",
@@ -223,498 +184,186 @@ export function MatchDetail() {
             }}
           >
             <div>
-              <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", display: "block" }}>
-                Horário
-              </span>
+              <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", display: "block" }}>Horário</span>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, fontWeight: 700 }}>
                 <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "var(--primary-fixed)" }}>
                   schedule
                 </span>
-                <span style={{ fontSize: "13px" }}>{match.dateTime}</span>
+                <span style={{ fontSize: "13px" }}>{formatMatchDateTime(match.dateTime)}</span>
               </div>
             </div>
-
             <div>
-              <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", display: "block" }}>
-                Status
+              <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", display: "block" }}>Vagas</span>
+              <span className="font-display" style={{ fontSize: "14px", fontWeight: 800, color: "var(--primary-fixed)" }}>
+                {roster.length}/4
               </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, fontWeight: 800 }}>
-                <span
-                  className="font-display"
-                  style={{
-                    fontSize: "14px",
-                    color: match.status === "FINISHED" ? "var(--on-surface-variant)" : "var(--primary-fixed)",
-                  }}
-                >
-                  {match.status === "AWAITING_PLAYERS"
-                    ? "Aguardando Jogadores"
-                    : match.status === "SCHEDULED"
-                    ? "Confirmada / Agendada"
-                    : "Finalizada"}
-                </span>
-              </div>
             </div>
-
-            <div style={{ gridColumn: "1 / -1" }}>
-              <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", display: "block" }}>
-                Endereço
-              </span>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2, fontSize: "12px", color: "var(--on-surface)" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "var(--secondary)" }}>
-                  location_on
-                </span>
-                <span>{match.location}</span>
-              </div>
-            </div>
-
-            {match.levelRequired && (
+            {isFinished && match.scorePair1 != null && match.scorePair2 != null && (
               <div style={{ gridColumn: "1 / -1" }}>
-                <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", display: "block" }}>
-                  Nível Sugerido
+                <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", display: "block" }}>Resultado</span>
+                <span className="font-display" style={{ fontSize: "20px", fontWeight: 900, color: "var(--on-surface)" }}>
+                  {match.scorePair1} — {match.scorePair2}
                 </span>
-                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--on-surface)" }}>
-                  {match.levelRequired}
+                <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", marginLeft: 8 }}>
+                  (Dupla 1 x Dupla 2)
                 </span>
               </div>
             )}
           </div>
 
-          {/* Organizer badge */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px" }}>
             <span style={{ color: "var(--on-surface-variant)" }}>Organizado por:</span>
             <Link
               to={`/players/${match.organizer.id}`}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                color: "var(--primary-fixed)",
-                textDecoration: "none",
-                fontWeight: 700,
-              }}
+              style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--primary-fixed)", textDecoration: "none", fontWeight: 700 }}
             >
               <span>{match.organizer.name}</span>
               <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>chevron_right</span>
             </Link>
           </div>
 
-          {/* Share Action */}
-          <div style={{ marginTop: 4 }}>
-            <ShareButton
-              matchId={match.id}
-              title={match.clubName}
-              location={match.location}
-              dateTime={match.dateTime}
-              variant="outline"
-            />
-          </div>
+          <ShareButton
+            matchId={match.id}
+            title={match.location}
+            location={match.location}
+            dateTime={formatMatchDateTime(match.dateTime)}
+            variant="outline"
+          />
         </section>
 
-        {/* Court Layout / Players Section */}
+        {/* Court */}
         <section
           className="glass-panel animate-fade-in"
-          style={{
-            borderRadius: "20px",
-            padding: "20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "16px",
-          }}
+          style={{ borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2
-              className="font-display"
-              style={{ fontSize: "18px", fontWeight: 800, color: "var(--on-surface)" }}
-            >
-              Quadra & Escalação
-            </h2>
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: 700,
-                color: "var(--primary-fixed)",
-                background: "rgba(210, 240, 0, 0.12)",
-                padding: "3px 10px",
-                borderRadius: "var(--radius-full)",
-              }}
-            >
-              {confirmedParticipations.length}/4 Vagas Preenchidas
-            </span>
-          </div>
+          <h2 className="font-display" style={{ fontSize: "18px", fontWeight: 800, color: "var(--on-surface)" }}>
+            Quadra & escalação
+          </h2>
 
-          {/* Teams Grid */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-            {/* Dupla 1 */}
-            <div
-              style={{
-                background: "rgba(14, 14, 14, 0.7)",
-                borderRadius: "14px",
-                padding: "14px",
-                border: "1px solid rgba(210, 240, 0, 0.2)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-subtle)", paddingBottom: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--primary-fixed)" }} />
-                  <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--primary-fixed)", textTransform: "uppercase" }}>
-                    Dupla 1
-                  </span>
-                </div>
-                {auth.isAuthenticated && userParticipation?.team === 2 && team1Players.length < 2 && (
-                  <button
-                    type="button"
-                    onClick={() => handleChangeTeam(1)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--primary-fixed)",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Mudar para cá
-                  </button>
-                )}
-              </div>
-
-              <PlayerSlot
-                slotNumber={1}
-                participation={team1Players[0]}
-                onSelectEmpty={() => !isUserConfirmed && handleRequestJoin(1)}
-              />
-              <PlayerSlot
-                slotNumber={2}
-                participation={team1Players[1]}
-                onSelectEmpty={() => !isUserConfirmed && handleRequestJoin(1)}
-              />
-            </div>
-
-            {/* Dupla 2 */}
-            <div
-              style={{
-                background: "rgba(14, 14, 14, 0.7)",
-                borderRadius: "14px",
-                padding: "14px",
-                border: "1px solid rgba(173, 198, 255, 0.2)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "10px",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border-subtle)", paddingBottom: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span className="dot" style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--secondary)" }} />
-                  <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--secondary)", textTransform: "uppercase" }}>
-                    Dupla 2
-                  </span>
-                </div>
-                {auth.isAuthenticated && userParticipation?.team === 1 && team2Players.length < 2 && (
-                  <button
-                    type="button"
-                    onClick={() => handleChangeTeam(2)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--secondary)",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Mudar para cá
-                  </button>
-                )}
-              </div>
-
-              <PlayerSlot
-                slotNumber={3}
-                participation={team2Players[0]}
-                onSelectEmpty={() => !isUserConfirmed && handleRequestJoin(2)}
-              />
-              <PlayerSlot
-                slotNumber={4}
-                participation={team2Players[1]}
-                onSelectEmpty={() => !isUserConfirmed && handleRequestJoin(2)}
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Admin Management Panel for Demo Mode */}
-        {isOrganizer && !auth.isAuthenticated && match.pendingRequests && match.pendingRequests.length > 0 && (
-          <section
-            className="glass-panel animate-fade-in"
-            style={{
-              borderRadius: "20px",
-              padding: "20px",
-              border: "1px solid rgba(210, 240, 0, 0.3)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "14px",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span
-                  className="material-symbols-outlined"
-                  style={{ color: "var(--primary-fixed)", fontSize: "22px" }}
-                >
-                  admin_panel_settings
-                </span>
-                <h2
-                  className="font-display"
-                  style={{ fontSize: "17px", fontWeight: 800, color: "var(--primary-fixed)" }}
-                >
-                  Painel do Organizador
-                </h2>
-              </div>
-              <span
+            {[1, 2].map((team) => (
+              <div
+                key={team}
                 style={{
-                  fontSize: "11px",
-                  fontWeight: 700,
-                  background: "var(--surface-container-highest)",
-                  padding: "3px 8px",
-                  borderRadius: "6px",
-                  color: "var(--on-surface-variant)",
+                  background: "rgba(14, 14, 14, 0.7)",
+                  borderRadius: "14px",
+                  padding: "14px",
+                  border: `1px solid ${team === 1 ? "rgba(210, 240, 0, 0.2)" : "rgba(173, 198, 255, 0.2)"}`,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
                 }}
               >
-                {match.pendingRequests.length} pendente(s)
-              </span>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-              {match.pendingRequests.map((req) => (
-                <div
-                  key={req.id}
+                <span
                   style={{
-                    background: "rgba(14, 14, 14, 0.8)",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "12px",
-                    padding: "12px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: 10,
+                    fontSize: "12px",
+                    fontWeight: 800,
+                    color: team === 1 ? "var(--primary-fixed)" : "var(--secondary)",
+                    textTransform: "uppercase",
+                    borderBottom: "1px solid var(--border-subtle)",
+                    paddingBottom: 6,
                   }}
                 >
-                  <Link
-                    to={`/players/${req.player.id}`}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      textDecoration: "none",
-                      flex: 1,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: "50%",
-                        overflow: "hidden",
-                        border: "2px solid var(--primary-fixed)",
-                        backgroundColor: "var(--surface-container-high)",
-                      }}
-                    >
-                      {req.player.avatarUrl ? (
-                        <img
-                          src={req.player.avatarUrl}
-                          alt={req.player.name}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                      ) : (
-                        <div
-                          style={{
-                            width: "100%",
-                            height: "100%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: "var(--primary-fixed)",
-                            fontWeight: 700,
-                          }}
-                        >
-                          {req.player.name.charAt(0)}
-                        </div>
-                      )}
-                    </div>
+                  Dupla {team}
+                </span>
 
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <span style={{ fontWeight: 700, fontSize: "14px", color: "var(--on-surface)" }}>
-                        {req.player.name}
-                      </span>
-                      <span style={{ fontSize: "11px", color: "var(--on-surface-variant)" }}>
-                        OVR {req.player.rating} • {req.player.preferredSide}
-                      </span>
-                    </div>
-                  </Link>
+                {SLOTS.filter((s) => s.team === team).map((s) => {
+                  const part = slotOf(s.team, s.position);
+                  const clickable =
+                    !part &&
+                    !isFinished &&
+                    ((isConfirmed && match.status !== "FINISHED") ||
+                      (!isConfirmed && match.status === "AWAITING_PLAYERS"));
+                  return (
+                    <PlayerSlot
+                      key={s.position}
+                      position={s.position}
+                      participation={part}
+                      onClick={clickable ? () => handleSlotClick(s.team, s.position) : undefined}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </section>
 
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                      type="button"
-                      onClick={() => handleAcceptRequest(req.id)}
-                      title="Aceitar na partida"
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: "50%",
-                        background: "var(--primary-fixed)",
-                        color: "var(--on-primary-fixed)",
-                        border: "none",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontWeight: 700,
-                      }}
-                    >
-                      <span className="material-symbols-outlined filled" style={{ fontSize: "20px" }}>
-                        check
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRejectRequest(req.id)}
-                      title="Recusar"
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: "50%",
-                        background: "rgba(255, 180, 171, 0.15)",
-                        color: "var(--error)",
-                        border: "1px solid rgba(255, 180, 171, 0.3)",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-                        close
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Player Join Action Section */}
-        <section style={{ marginTop: 8 }}>
-          {isUserConfirmed ? (
-            <div
-              style={{
-                background: "rgba(210, 240, 0, 0.1)",
-                border: "1px solid var(--primary-fixed)",
-                borderRadius: "14px",
-                padding: "16px",
-                textAlign: "center",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <span className="material-symbols-outlined filled" style={{ color: "var(--primary-fixed)", fontSize: "28px" }}>
-                check_circle
-              </span>
-              <span style={{ fontWeight: 800, fontSize: "16px", color: "var(--primary-fixed)" }}>
-                Você está confirmado nesta partida (Dupla {userParticipation?.team})!
-              </span>
-              <span style={{ fontSize: "12px", color: "var(--on-surface-variant)" }}>
-                Compareça no local 10 minutos antes do horário marcado.
-              </span>
-              <button
-                type="button"
-                onClick={handleLeaveMatch}
-                className="btn-secondary"
-                style={{
-                  marginTop: 6,
-                  color: "var(--error)",
-                  borderColor: "rgba(255, 180, 171, 0.3)",
-                  fontSize: "12px",
-                }}
-              >
-                Sair da Partida
-              </button>
-            </div>
-          ) : isUserPending ? (
-            <div
-              style={{
-                background: "rgba(173, 198, 255, 0.1)",
-                border: "1px solid var(--secondary)",
-                borderRadius: "14px",
-                padding: "16px",
-                textAlign: "center",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 6,
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ color: "var(--secondary)", fontSize: "28px" }}>
-                schedule
-              </span>
-              <span style={{ fontWeight: 800, fontSize: "15px", color: "var(--secondary)" }}>
-                Solicitação Pendente de Aprovação
-              </span>
-              <span style={{ fontSize: "12px", color: "var(--on-surface-variant)" }}>
-                O organizador ({match.organizer.name}) recebeu seu pedido e irá avaliar sua vaga.
-              </span>
-            </div>
-          ) : isFull ? (
-            <div
-              className="glass-panel"
-              style={{
-                borderRadius: "14px",
-                padding: "16px",
-                textAlign: "center",
-                color: "var(--on-surface-variant)",
-              }}
-            >
-              <span style={{ fontWeight: 700 }}>Esta partida já está com todas as vagas preenchidas.</span>
-            </div>
-          ) : (
+        {/* Action */}
+        <section>
+          {isConfirmed && !isOrganizer && !isFinished ? (
             <button
               type="button"
-              onClick={() => handleRequestJoin()}
-              className="btn-primary"
-              style={{ width: "100%", padding: "14px", fontSize: "16px" }}
+              onClick={handleLeave}
+              className="btn-secondary"
+              style={{ width: "100%", color: "var(--error)", borderColor: "rgba(255, 180, 171, 0.3)" }}
             >
-              <span className="material-symbols-outlined filled">sports_tennis</span>
-              Quero Jogar / Entrar na Partida
+              Sair da partida
             </button>
-          )}
+          ) : !isConfirmed && !isFull && match.status === "AWAITING_PLAYERS" ? (
+            <div
+              className="glass-panel"
+              style={{ borderRadius: "14px", padding: "16px", textAlign: "center", color: "var(--on-surface-variant)" }}
+            >
+              Toque em uma vaga livre acima para entrar na partida.
+            </div>
+          ) : null}
         </section>
+
+        {/* Organizer: register result */}
+        {isOrganizer && match.status === "SCHEDULED" && (
+          <ResultForm
+            onSubmit={async (scorePair1, scorePair2) => {
+              try {
+                await api.matches.registerResult(matchId, { scorePair1, scorePair2 });
+                setToastMessage("Resultado registrado!");
+                await loadData();
+              } catch (err) {
+                setToastMessage((err as Error).message);
+              }
+            }}
+          />
+        )}
+
+        {/* Peer evaluations (finished matches only) */}
+        {isFinished && isConfirmed && (
+          <EvaluationSection
+            roster={roster}
+            myId={myId}
+            evaluations={evaluations}
+            onSubmit={async (evaluatedPlayerId, scores) => {
+              try {
+                await api.matches.createEvaluation(matchId, {
+                  evaluatedPlayerId,
+                  skillRatings: SKILL_ORDER.map((skill) => ({ skill, score: scores[skill] })),
+                });
+                setToastMessage("Avaliação enviada!");
+                await loadData();
+              } catch (err) {
+                setToastMessage((err as Error).message);
+              }
+            }}
+          />
+        )}
       </div>
 
-      {toastMessage && (
-        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
-      )}
+      {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
     </Layout>
   );
 }
 
 function PlayerSlot({
-  slotNumber,
+  position,
   participation,
-  onSelectEmpty,
+  onClick,
 }: {
-  slotNumber: number;
-  participation?: Participation;
-  onSelectEmpty?: () => void;
+  position: PadelPosition;
+  participation?: ParticipationOutput;
+  onClick?: () => void;
 }) {
   if (!participation) {
     return (
       <div
-        onClick={onSelectEmpty}
+        onClick={onClick}
         style={{
           border: "2px dashed var(--outline-variant)",
           borderRadius: "10px",
@@ -722,9 +371,7 @@ function PlayerSlot({
           display: "flex",
           alignItems: "center",
           gap: 10,
-          background: "rgba(255, 255, 255, 0.02)",
-          cursor: onSelectEmpty ? "pointer" : "default",
-          transition: "all 0.15s ease",
+          cursor: onClick ? "pointer" : "default",
         }}
       >
         <div
@@ -744,17 +391,15 @@ function PlayerSlot({
           </span>
         </div>
         <span style={{ fontSize: "12px", color: "var(--on-surface-variant)", fontWeight: 500 }}>
-          Vaga {slotNumber} {onSelectEmpty ? "• Clique para entrar" : "aberta"}
+          {POSITION_LABELS[position]} {onClick ? "· toque para entrar" : "· livre"}
         </span>
       </div>
     );
   }
 
-  const player = participation.player;
-
   return (
     <Link
-      to={`/players/${player.id}`}
+      to={`/players/${participation.player.id}`}
       style={{
         background: "var(--surface-container-high)",
         border: "1px solid var(--border-subtle)",
@@ -764,7 +409,6 @@ function PlayerSlot({
         alignItems: "center",
         gap: 10,
         textDecoration: "none",
-        transition: "all 0.2s ease",
       }}
     >
       <div
@@ -772,37 +416,20 @@ function PlayerSlot({
           width: 34,
           height: 34,
           borderRadius: "50%",
-          overflow: "hidden",
           border: "2px solid var(--primary-fixed)",
           backgroundColor: "var(--surface-container-highest)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "var(--primary-fixed)",
+          fontWeight: 700,
+          fontSize: "12px",
           flexShrink: 0,
         }}
       >
-        {player.avatarUrl ? (
-          <img
-            src={player.avatarUrl}
-            alt={player.name}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-          />
-        ) : (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--primary-fixed)",
-              fontWeight: 700,
-              fontSize: "12px",
-            }}
-          >
-            {player.name.charAt(0)}
-          </div>
-        )}
+        {participation.player.name.charAt(0)}
       </div>
-
-      <div style={{ display: "flex", flexDirection: "column", overflow: "hidden", flex: 1 }}>
+      <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <span
           style={{
             fontSize: "13px",
@@ -813,12 +440,156 @@ function PlayerSlot({
             textOverflow: "ellipsis",
           }}
         >
-          {player.name}
+          {participation.player.name}
         </span>
         <span style={{ fontSize: "10px", color: "var(--on-surface-variant)", fontWeight: 600 }}>
-          OVR {player.rating} • {player.preferredSide}
+          OVR {participation.player.rating} · {POSITION_LABELS[participation.position]}
         </span>
       </div>
     </Link>
+  );
+}
+
+function ResultForm({ onSubmit }: { onSubmit: (scorePair1: number, scorePair2: number) => void }) {
+  const [s1, setS1] = useState(0);
+  const [s2, setS2] = useState(0);
+
+  return (
+    <section
+      className="glass-panel animate-fade-in"
+      style={{ borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", gap: "14px" }}
+    >
+      <h2 className="font-display" style={{ fontSize: "17px", fontWeight: 800, color: "var(--primary-fixed)" }}>
+        Registrar resultado
+      </h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
+        <ScoreInput label="Dupla 1" value={s1} onChange={setS1} />
+        <span className="font-display" style={{ fontSize: "20px", fontWeight: 900 }}>x</span>
+        <ScoreInput label="Dupla 2" value={s2} onChange={setS2} />
+      </div>
+      <button
+        type="button"
+        onClick={() => onSubmit(s1, s2)}
+        disabled={s1 === s2}
+        className="btn-primary"
+        style={{ width: "100%" }}
+      >
+        {s1 === s2 ? "Os placares não podem empatar" : "Confirmar resultado"}
+      </button>
+    </section>
+  );
+}
+
+function ScoreInput({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", fontWeight: 700 }}>{label}</span>
+      <input
+        type="number"
+        min={0}
+        value={value}
+        onChange={(e) => onChange(Math.max(0, Number(e.target.value)))}
+        style={{
+          width: 64,
+          padding: "10px",
+          borderRadius: "10px",
+          backgroundColor: "var(--surface-container-high)",
+          border: "1px solid var(--border-subtle)",
+          color: "var(--primary-fixed)",
+          fontFamily: "var(--font-display)",
+          fontWeight: 800,
+          fontSize: "18px",
+          textAlign: "center",
+          outline: "none",
+        }}
+      />
+    </div>
+  );
+}
+
+function EvaluationSection({
+  roster,
+  myId,
+  evaluations,
+  onSubmit,
+}: {
+  roster: ParticipationOutput[];
+  myId: string;
+  evaluations: EvaluationOutput[];
+  onSubmit: (evaluatedPlayerId: string, scores: Record<Skill, number>) => void;
+}) {
+  const evaluatedByMe = new Set(
+    evaluations.filter((e) => e.evaluatorPlayerId === myId).map((e) => e.evaluatedPlayerId)
+  );
+  const targets = roster.filter((p) => p.player.id !== myId);
+
+  return (
+    <section
+      className="glass-panel animate-fade-in"
+      style={{ borderRadius: "20px", padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}
+    >
+      <h2 className="font-display" style={{ fontSize: "17px", fontWeight: 800, color: "var(--on-surface)" }}>
+        Avaliar fundamentos dos colegas
+      </h2>
+      {targets.map((p) =>
+        evaluatedByMe.has(p.player.id) ? (
+          <div key={p.id} style={{ fontSize: "13px", color: "var(--on-surface-variant)", fontWeight: 600 }}>
+            ✓ {p.player.name} já avaliado
+          </div>
+        ) : (
+          <EvaluationForm key={p.id} name={p.player.name} onSubmit={(scores) => onSubmit(p.player.id, scores)} />
+        )
+      )}
+    </section>
+  );
+}
+
+function EvaluationForm({
+  name,
+  onSubmit,
+}: {
+  name: string;
+  onSubmit: (scores: Record<Skill, number>) => void;
+}) {
+  const [scores, setScores] = useState<Record<Skill, number>>(
+    () => Object.fromEntries(SKILL_ORDER.map((s) => [s, 5])) as Record<Skill, number>
+  );
+
+  return (
+    <div
+      style={{
+        background: "rgba(14, 14, 14, 0.7)",
+        border: "1px solid var(--border-subtle)",
+        borderRadius: "12px",
+        padding: "14px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "10px",
+      }}
+    >
+      <span style={{ fontWeight: 700, fontSize: "14px", color: "var(--on-surface)" }}>{name}</span>
+      {SKILL_ORDER.map((skill) => (
+        <label key={skill} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: "12px" }}>
+          <span style={{ width: 110, color: "var(--on-surface)", fontWeight: 600 }}>{SKILL_LABELS[skill]}</span>
+          <input
+            type="range"
+            min={1}
+            max={10}
+            value={scores[skill]}
+            onChange={(e) => setScores((prev) => ({ ...prev, [skill]: Number(e.target.value) }))}
+            style={{ flex: 1 }}
+          />
+          <span
+            className="font-display"
+            style={{ width: 24, textAlign: "right", color: "var(--primary-fixed)", fontWeight: 800 }}
+          >
+            {scores[skill]}
+          </span>
+        </label>
+      ))}
+      <button type="button" onClick={() => onSubmit(scores)} className="btn-primary" style={{ width: "100%" }}>
+        Enviar avaliação
+      </button>
+    </div>
   );
 }

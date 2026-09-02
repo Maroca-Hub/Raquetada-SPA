@@ -1,133 +1,99 @@
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "react-oidc-context";
 import { Layout } from "../components/layout/Layout";
 import { MatchCard } from "../components/card/MatchCard";
 import { CreateMatchModal } from "../components/match/CreateMatchModal";
 import { Toast } from "../components/common/Toast";
 import { useApi } from "../hooks/useApi";
-import { mapMatchOutputToMatch, mapPlayerOutputToPlayer } from "../services/api";
-import { mockService, subscribeToMatches } from "../services/mockData";
-import type { Match, Player } from "../types";
+import type { MatchOutput, ParticipationOutput } from "../types";
+
+type DayFilter = "today" | "tomorrow" | "weekend" | "all";
+
+const FILTERS: { id: DayFilter; label: string }[] = [
+  { id: "today", label: "Hoje" },
+  { id: "tomorrow", label: "Amanhã" },
+  { id: "weekend", label: "Fim de semana" },
+  { id: "all", label: "Todas" },
+];
+
+function matchesDayFilter(iso: string, filter: DayFilter): boolean {
+  if (filter === "all") return true;
+  const date = new Date(iso);
+  const now = new Date();
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const diffDays = Math.round((startOfDay(date).getTime() - startOfDay(now).getTime()) / 86_400_000);
+  if (filter === "today") return diffDays === 0;
+  if (filter === "tomorrow") return diffDays === 1;
+  // weekend: upcoming Saturday or Sunday
+  return diffDays >= 0 && diffDays <= 7 && (date.getDay() === 0 || date.getDay() === 6);
+}
 
 export function Matches() {
-  const auth = useAuth();
   const api = useApi();
-  const isDemo = localStorage.getItem("raquetada_demo_session") === "true";
 
-  const [selectedFilter, setSelectedFilter] = useState<string>("today");
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [currentUser, setCurrentUser] = useState<Player>(() => {
-    if (auth.isAuthenticated) {
-      return {
-        id: auth.user?.profile?.sub || "me",
-        name: auth.user?.profile?.name || auth.user?.profile?.preferred_username || "Jogador",
-        email: auth.user?.profile?.email || "",
-        rating: 52,
-        tier: "BRONZE",
-        level: "Nível 3.0 - Iniciante",
-        preferredSide: "AMBOS",
-        stats: { power: 0, speed: 0, technique: 0, stamina: 0 },
-        evaluations: { fairPlay: 0, punctuality: 0, teamSpirit: 0, generalTechnique: 0 },
-        tags: [],
-      };
-    }
-    return mockService.getCurrentUser();
-  });
+  const [selectedFilter, setSelectedFilter] = useState<DayFilter>("all");
+  const [matches, setMatches] = useState<MatchOutput[]>([]);
+  const [rosters, setRosters] = useState<Record<string, ParticipationOutput[]>>({});
+  const [myId, setMyId] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    if (auth.isAuthenticated) {
-      try {
-        // Fetch current user from API
-        try {
-          const meOutput = await api.players.getMyProfile();
-          if (meOutput) {
-            const me = mapPlayerOutputToPlayer(meOutput);
-            setCurrentUser(me);
-          }
-        } catch (meErr) {
-          console.warn("Could not fetch user profile from API:", meErr);
-        }
+    setError(null);
+    try {
+      const [me, matchList] = await Promise.all([api.players.getMyProfile(), api.matches.list()]);
+      setMyId(me.id);
 
-        // Fetch matches from API
-        const matchOutputs = await api.matches.list();
-        if (Array.isArray(matchOutputs)) {
-          const matchesWithRoster = await Promise.all(
-            matchOutputs.map(async (m) => {
-              try {
-                const roster = await api.matches.listParticipations(m.id);
-                return mapMatchOutputToMatch(m, roster);
-              } catch {
-                return mapMatchOutputToMatch(m, []);
-              }
-            })
-          );
-          setMatches(matchesWithRoster);
-        } else {
-          setMatches([]);
-        }
-      } catch (err) {
-        console.error("API error loading matches:", err);
-        setMatches([]);
-      }
-    } else if (isDemo) {
-      // Demo / offline mode only
-      setMatches([...mockService.getMatches()]);
-      setCurrentUser(mockService.getCurrentUser());
-    } else {
+      const rosterEntries = await Promise.all(
+        matchList.map(async (m) => {
+          try {
+            return [m.id, await api.matches.listParticipations(m.id)] as const;
+          } catch {
+            return [m.id, [] as ParticipationOutput[]] as const;
+          }
+        })
+      );
+      setMatches(matchList);
+      setRosters(Object.fromEntries(rosterEntries));
+    } catch (err) {
+      setError((err as Error).message);
       setMatches([]);
+      setRosters({});
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [auth.isAuthenticated, isDemo, api]);
+  }, [api]);
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
 
-    // In demo mode only, subscribe to local storage changes
-    if (!auth.isAuthenticated && isDemo) {
-      const unsubscribe = subscribeToMatches(() => {
-        setMatches([...mockService.getMatches()]);
-        setCurrentUser(mockService.getCurrentUser());
-      });
-      return unsubscribe;
+  const filteredMatches = matches.filter((m) => matchesDayFilter(m.dateTime, selectedFilter));
+
+  const handleJoin = async (matchId: string) => {
+    // Joining needs a slot; take the first free one.
+    const roster = rosters[matchId] ?? [];
+    const taken = new Set(roster.map((p) => `${p.team}-${p.position}`));
+    const slot = (["1-DRIVE", "1-REVES", "2-DRIVE", "2-REVES"] as const).find((s) => !taken.has(s));
+    if (!slot) {
+      setToastMessage("Partida cheia.");
+      return;
     }
-  }, [loadData, auth.isAuthenticated, isDemo]);
-
-  const filterOptions = [
-    { id: "today", label: "Hoje" },
-    { id: "tomorrow", label: "Amanhã" },
-    { id: "saturday", label: "Sábado" },
-    { id: "sunday", label: "Domingo" },
-    { id: "all", label: "Todas" },
-  ];
-
-  const filteredMatches = matches.filter((match) => {
-    if (selectedFilter === "all") return true;
-    return match.dateCategory === selectedFilter;
-  });
-
-  const handleQuickJoin = async (matchId: string) => {
-    if (auth.isAuthenticated) {
-      try {
-        await api.matches.join(matchId, { team: 1 });
-        setToastMessage("Você entrou na partida com sucesso!");
-        await loadData();
-      } catch (err) {
-        setToastMessage(`Erro ao entrar: ${(err as Error).message}`);
-      }
-    } else {
-      const result = mockService.requestToJoinMatch(matchId, currentUser);
-      setToastMessage(result.message);
+    const [team, position] = slot.split("-") as ["1" | "2", "DRIVE" | "REVES"];
+    try {
+      await api.matches.join(matchId, { team: Number(team), position });
+      setToastMessage("Você entrou na partida!");
+      await loadData();
+    } catch (err) {
+      setToastMessage(`Erro ao entrar: ${(err as Error).message}`);
     }
   };
 
   return (
     <Layout>
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        {/* Create Match Banner / Action */}
         <section
           className="glass-panel animate-fade-in"
           style={{
@@ -150,7 +116,7 @@ export function Matches() {
                 letterSpacing: "0.06em",
               }}
             >
-              Organize seu Jogo
+              Organize seu jogo
             </span>
             <h2
               className="font-display"
@@ -164,31 +130,20 @@ export function Matches() {
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
             className="btn-primary"
-            style={{
-              padding: "10px 18px",
-              fontSize: "13px",
-              borderRadius: "var(--radius-full)",
-              whiteSpace: "nowrap",
-            }}
+            style={{ padding: "10px 18px", fontSize: "13px", borderRadius: "var(--radius-full)", whiteSpace: "nowrap" }}
           >
             <span className="material-symbols-outlined filled" style={{ fontSize: "18px" }}>
               add
             </span>
-            Criar Partida
+            Criar partida
           </button>
         </section>
 
-        {/* Quick Day Filter Selector */}
         <section
           className="no-scrollbar"
-          style={{
-            display: "flex",
-            gap: "10px",
-            overflowX: "auto",
-            paddingBottom: "4px",
-          }}
+          style={{ display: "flex", gap: "10px", overflowX: "auto", paddingBottom: "4px" }}
         >
-          {filterOptions.map((opt) => (
+          {FILTERS.map((opt) => (
             <button
               key={opt.id}
               type="button"
@@ -200,14 +155,27 @@ export function Matches() {
           ))}
         </section>
 
-        {/* Match Feed List */}
         <section style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {loading ? (
             <div style={{ textAlign: "center", padding: "40px", color: "var(--primary-fixed)" }}>
-              <span className="material-symbols-outlined" style={{ fontSize: "32px", animation: "spin 1s linear infinite" }}>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: "32px", animation: "spin 1s linear infinite" }}
+              >
                 sports_tennis
               </span>
               <p style={{ marginTop: 8, fontSize: "13px", fontWeight: 600 }}>Carregando partidas...</p>
+            </div>
+          ) : error ? (
+            <div
+              className="glass-panel"
+              style={{ borderRadius: "16px", padding: "28px 20px", textAlign: "center", color: "var(--error)" }}
+            >
+              <p style={{ fontWeight: 600 }}>Não foi possível carregar as partidas.</p>
+              <p style={{ fontSize: "12px", color: "var(--on-surface-variant)", marginTop: 4 }}>{error}</p>
+              <button type="button" onClick={loadData} className="btn-secondary" style={{ marginTop: 12 }}>
+                Tentar novamente
+              </button>
             </div>
           ) : filteredMatches.length === 0 ? (
             <div
@@ -222,28 +190,15 @@ export function Matches() {
                 gap: "12px",
               }}
             >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: "40px", color: "var(--on-surface-variant)" }}
-              >
+              <span className="material-symbols-outlined" style={{ fontSize: "40px", color: "var(--on-surface-variant)" }}>
                 sports_tennis
               </span>
-              <p style={{ fontWeight: 600, color: "var(--on-surface)" }}>
-                Nenhuma partida aberta para este dia.
-              </p>
+              <p style={{ fontWeight: 600, color: "var(--on-surface)" }}>Nenhuma partida para este filtro.</p>
               <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedFilter("all")}
-                  className="btn-secondary"
-                >
-                  Ver todas as partidas
+                <button type="button" onClick={() => setSelectedFilter("all")} className="btn-secondary">
+                  Ver todas
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="btn-primary"
-                >
+                <button type="button" onClick={() => setIsCreateModalOpen(true)} className="btn-primary">
                   Criar uma agora
                 </button>
               </div>
@@ -253,8 +208,9 @@ export function Matches() {
               <MatchCard
                 key={match.id}
                 match={match}
-                currentUser={currentUser}
-                onQuickJoin={handleQuickJoin}
+                roster={rosters[match.id] ?? []}
+                myId={myId}
+                onJoin={handleJoin}
               />
             ))
           )}
@@ -270,9 +226,7 @@ export function Matches() {
         }}
       />
 
-      {toastMessage && (
-        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
-      )}
+      {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
     </Layout>
   );
 }

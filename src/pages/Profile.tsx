@@ -5,291 +5,116 @@ import { Layout } from "../components/layout/Layout";
 import { PlayerCard } from "../components/card/PlayerCard";
 import { Toast } from "../components/common/Toast";
 import { useApi } from "../hooks/useApi";
-import { mapPlayerOutputToPlayer } from "../services/api";
-import { mockService } from "../services/mockData";
-import type { Player } from "../types";
+import { clearDevSession, isDevSession } from "../devSession";
+import type { PlayerProfileOutput } from "../types";
 
 export function Profile() {
   const auth = useAuth();
   const api = useApi();
   const navigate = useNavigate();
 
-  const [player, setPlayer] = useState<Player>(mockService.getCurrentUser());
+  const [profile, setProfile] = useState<PlayerProfileOutput | null>(null);
+  const [evaluationCount, setEvaluationCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const loadProfile = useCallback(async () => {
     setLoading(true);
-    if (auth.isAuthenticated) {
+    setError(null);
+    try {
+      const me = await api.players.getMyProfile();
+      setProfile(me);
       try {
-        const meOutput = await api.players.getMyProfile();
-        const mappedPlayer = mapPlayerOutputToPlayer(meOutput);
-
-        // Fetch received evaluations
-        try {
-          const evalOutputs = await api.players.listReceivedEvaluations(meOutput.id);
-          if (evalOutputs && evalOutputs.length > 0) {
-            // Aggregate skills from evaluations
-            let lob = 0, serve = 0, pos = 0, smash = 0, def = 0, count = 0;
-            evalOutputs.forEach((ev) => {
-              ev.skillRatings?.forEach((sr) => {
-                count++;
-                if (sr.skill === "LOB") lob += sr.score * 10;
-                if (sr.skill === "SERVE") serve += sr.score * 10;
-                if (sr.skill === "POSITIONING") pos += sr.score * 10;
-                if (sr.skill === "SMASH") smash += sr.score * 10;
-                if (sr.skill === "DEFENSE") def += sr.score * 10;
-              });
-            });
-            if (count > 0) {
-              const evalCount = evalOutputs.length;
-              mappedPlayer.evaluations = {
-                fairPlay: Math.round(pos / evalCount) || 95,
-                punctuality: Math.round(serve / evalCount) || 94,
-                teamSpirit: Math.round(lob / evalCount) || 92,
-                generalTechnique: Math.round((smash + def) / (evalCount * 2)) || mappedPlayer.rating,
-              };
-            }
-          }
-        } catch (evalErr) {
-          console.warn("Evaluations fetch note:", evalErr);
-        }
-
-        setPlayer(mappedPlayer);
-      } catch (err) {
-        console.error("API error loading profile:", err);
-        setPlayer({
-          id: auth.user?.profile?.sub || "me",
-          name: auth.user?.profile?.name || auth.user?.profile?.preferred_username || "Jogador",
-          email: auth.user?.profile?.email || "",
-          rating: 52,
-          tier: "BRONZE",
-          level: "Nível 3.0 - Iniciante",
-          preferredSide: "AMBOS",
-          stats: { power: 0, speed: 0, technique: 0, stamina: 0 },
-          evaluations: { fairPlay: 0, punctuality: 0, teamSpirit: 0, generalTechnique: 0 },
-          tags: [],
-        });
+        const evals = await api.players.listReceivedEvaluations(me.id);
+        setEvaluationCount(evals.length);
+      } catch {
+        setEvaluationCount(null);
       }
-    } else {
-      setPlayer(mockService.getCurrentUser());
+    } catch (err) {
+      setError((err as Error).message);
+      setProfile(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }, [auth.isAuthenticated, auth.user, api]);
+  }, [api]);
 
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
 
-  const handleResetData = () => {
-    mockService.resetData();
-    setToastMessage("Dados da demonstração resetados para o estado inicial!");
-    setPlayer(mockService.getCurrentUser());
-  };
-
   const handleSignOut = async () => {
-    localStorage.removeItem("raquetada_demo_session");
-    localStorage.removeItem("raquetada_onboarding_completed");
+    clearDevSession();
     if (auth.isAuthenticated) {
       try {
         await auth.signoutRedirect();
-      } catch (err) {
-        console.error("Signout error", err);
+        return;
+      } catch {
         await auth.removeUser();
-        navigate("/login", { replace: true });
       }
-    } else {
-      navigate("/login", { replace: true });
     }
+    navigate("/login", { replace: true });
   };
 
   if (loading) {
     return (
-      <Layout title="Meu Perfil">
+      <Layout title="Meu perfil">
         <div style={{ textAlign: "center", padding: "40px", color: "var(--primary-fixed)" }}>
-          <span className="material-symbols-outlined" style={{ fontSize: "32px", animation: "spin 1s linear infinite" }}>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: "32px", animation: "spin 1s linear infinite" }}
+          >
             sports_tennis
           </span>
-          <p style={{ marginTop: 8, fontSize: "13px", fontWeight: 600 }}>Carregando perfil da API...</p>
+          <p style={{ marginTop: 8, fontSize: "13px", fontWeight: 600 }}>Carregando perfil...</p>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Layout title="Meu perfil">
+        <div className="glass-panel" style={{ borderRadius: "16px", padding: "28px 20px", textAlign: "center", color: "var(--error)" }}>
+          <p style={{ fontWeight: 600 }}>Não foi possível carregar seu perfil.</p>
+          {error && <p style={{ fontSize: "12px", color: "var(--on-surface-variant)", marginTop: 4 }}>{error}</p>}
+          <button type="button" onClick={loadProfile} className="btn-secondary" style={{ marginTop: 12 }}>
+            Tentar novamente
+          </button>
         </div>
       </Layout>
     );
   }
 
   return (
-    <Layout title="Meu Perfil">
+    <Layout title="Meu perfil">
       <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-        {/* Gamified Player Card */}
         <section className="animate-fade-in">
-          <PlayerCard player={player} showAttributes={true} />
+          <PlayerCard profile={profile} showSkills />
         </section>
 
-        {/* Recent Matches History */}
-        <section className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <h2
-              className="font-display"
-              style={{ fontSize: "18px", fontWeight: 800, color: "var(--on-surface)" }}
-            >
-              Histórico Recente
-            </h2>
-            <span
-              style={{
-                fontSize: "12px",
-                fontWeight: 600,
-                color: "var(--primary-fixed)",
-                cursor: "pointer",
-              }}
-              onClick={() => setToastMessage("Histórico sincronizado com a API!")}
-            >
-              Ver tudo
-            </span>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {player.matchHistory && player.matchHistory.length > 0 ? (
-              player.matchHistory.map((hist) => {
-                const isWin = hist.result === "V";
-                return (
-                  <div
-                    key={hist.id}
-                    className="glass-panel"
-                    style={{
-                      borderRadius: "14px",
-                      padding: "12px 16px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      transition: "all 0.2s ease",
-                      cursor: "pointer",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border-active)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "var(--border-subtle)";
-                    }}
-                    onClick={() => setToastMessage(`Detalhes da partida: ${hist.title}`)}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div
-                        style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: "50%",
-                          background: "var(--surface-container-high)",
-                          border: "1px solid var(--border-subtle)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          color: isWin ? "var(--primary-fixed)" : "var(--on-surface-variant)",
-                        }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>
-                          {isWin ? "emoji_events" : "sports_tennis"}
-                        </span>
-                      </div>
-
-                      <div style={{ display: "flex", flexDirection: "column" }}>
-                        <span style={{ fontWeight: 700, fontSize: "14px", color: "var(--on-surface)" }}>
-                          {hist.title}
-                        </span>
-                        <span style={{ fontSize: "11px", color: "var(--on-surface-variant)" }}>
-                          {hist.date} • {hist.court}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-                        <span
-                          className="font-display"
-                          style={{
-                            fontSize: "18px",
-                            fontWeight: 900,
-                            color: isWin ? "var(--primary-fixed)" : "var(--on-surface-variant)",
-                            lineHeight: 1,
-                          }}
-                        >
-                          {hist.result}
-                        </span>
-                        <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", fontWeight: 600 }}>
-                          {hist.score}
-                        </span>
-                      </div>
-                      <span className="material-symbols-outlined" style={{ color: "var(--on-surface-variant)", fontSize: "18px" }}>
-                        chevron_right
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="glass-panel" style={{ padding: "16px", borderRadius: "12px", textAlign: "center", color: "var(--on-surface-variant)" }}>
-                Nenhuma partida recente registrada na sua conta.
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Anonymous Peer Evaluations */}
-        <section className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <h2
-            className="font-display"
-            style={{ fontSize: "18px", fontWeight: 800, color: "var(--on-surface)" }}
-          >
-            Avaliações da Comunidade
+        <section
+          className="glass-panel animate-fade-in"
+          style={{ borderRadius: "16px", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}
+        >
+          <h2 className="font-display" style={{ fontSize: "16px", fontWeight: 800, color: "var(--on-surface)" }}>
+            Confiabilidade do rating
           </h2>
-
-          <div
-            className="glass-panel"
-            style={{
-              borderRadius: "16px",
-              padding: "18px",
-              display: "flex",
-              flexDirection: "column",
-              gap: "14px",
-            }}
-          >
-            <EvaluationItem label="Fair Play" score={player.evaluations.fairPlay} />
-            <EvaluationItem label="Pontualidade" score={player.evaluations.punctuality} />
-            <EvaluationItem label="Espírito de Equipe" score={player.evaluations.teamSpirit} />
-            <EvaluationItem label="Técnica Geral" score={player.evaluations.generalTechnique} />
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+            <span style={{ color: "var(--on-surface-variant)" }}>Índice de confiabilidade</span>
+            <span style={{ fontWeight: 700 }}>{(profile.reliability * 100).toFixed(0)}%</span>
           </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+            <span style={{ color: "var(--on-surface-variant)" }}>Avaliações recebidas</span>
+            <span style={{ fontWeight: 700 }}>{evaluationCount ?? "—"}</span>
+          </div>
+          {profile.provisional && (
+            <p style={{ fontSize: "12px", color: "var(--on-surface-variant)" }}>
+              Seu rating ainda é provisório — jogue e receba mais avaliações para consolidá-lo.
+            </p>
+          )}
         </section>
 
-        {/* Badges / Player Tags */}
-        {player.tags && (
-          <section className="animate-fade-in" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <h2
-              className="font-display"
-              style={{ fontSize: "16px", fontWeight: 800, color: "var(--on-surface)" }}
-            >
-              Destaques dos Colegas
-            </h2>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {player.tags.map((tag) => (
-                <span
-                  key={tag}
-                  style={{
-                    background: "var(--surface-container-high)",
-                    border: "1px solid var(--border-subtle)",
-                    borderRadius: "var(--radius-full)",
-                    padding: "6px 14px",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    color: "var(--on-surface)",
-                  }}
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Profile Settings & Account Actions */}
         <section
           style={{
             display: "flex",
@@ -306,73 +131,26 @@ export function Profile() {
             style={{ width: "100%", borderRadius: "var(--radius-md)" }}
           >
             <span className="material-symbols-outlined filled" style={{ fontSize: "18px" }}>
-              tune
+              edit
             </span>
-            Editar Minha Carta / Perfil
+            Editar meu nome
           </button>
-
-          {!auth.isAuthenticated && (
-            <button
-              type="button"
-              onClick={handleResetData}
-              className="btn-secondary"
-              style={{ width: "100%" }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                restart_alt
-              </span>
-              Resetar Demonstração (Recarregar Partidas Iniciais)
-            </button>
-          )}
 
           <button
             type="button"
             onClick={handleSignOut}
             className="btn-secondary"
-            style={{
-              width: "100%",
-              color: "var(--error)",
-              borderColor: "rgba(255, 180, 171, 0.2)",
-            }}
+            style={{ width: "100%", color: "var(--error)", borderColor: "rgba(255, 180, 171, 0.2)" }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
               logout
             </span>
-            Sair da Conta
+            {isDevSession() && !auth.isAuthenticated ? "Sair do modo dev" : "Sair da conta"}
           </button>
         </section>
       </div>
 
-      {toastMessage && (
-        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
-      )}
+      {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
     </Layout>
-  );
-}
-
-function EvaluationItem({ label, score }: { label: string; score: number }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--on-surface)" }}>
-          {label}
-        </span>
-        <span
-          className="font-display"
-          style={{ fontSize: "16px", fontWeight: 900, color: "var(--primary-fixed)" }}
-        >
-          {score}
-        </span>
-      </div>
-      <div className="stat-bar-track">
-        <div
-          className="stat-bar-fill"
-          style={{
-            width: `${score}%`,
-            background: "linear-gradient(90deg, var(--surface-tint), var(--primary-fixed))",
-          }}
-        />
-      </div>
-    </div>
   );
 }

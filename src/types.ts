@@ -1,93 +1,20 @@
+// ----------------------------------------------------
+// V1 API contract types — mirror the Raquetada API exactly.
+// Source of truth: GET http://localhost:8080/v3/api-docs
+// Nothing here is fabricated; every field is returned/accepted by an endpoint.
+// ----------------------------------------------------
+
 export type MatchStatus = "AWAITING_PLAYERS" | "SCHEDULED" | "FINISHED";
 
-export type PlayerTier = "BRONZE" | "PRATA" | "OURO" | "DIAMANTE";
+export type PadelPosition = "DRIVE" | "REVES";
 
-export type PreferredSide = "DRIVE" | "REVES" | "AMBOS";
+export type ParticipationStatus = "ACCEPTED" | "REJECTED";
 
-export type SkillType = "LOB" | "SERVE" | "POSITIONING" | "SMASH" | "DEFENSE";
+export type Form = "AWFUL" | "POOR" | "NEUTRAL" | "GOOD" | "GREAT";
 
-export interface SkillRatingInput {
-  skill: SkillType;
-  score: number; // 1 to 10
-}
+export type Skill = "LOB" | "SERVE" | "POSITIONING" | "SMASH" | "DEFENSE";
 
-export interface SkillRatingOutput {
-  skill: SkillType;
-  score: number;
-}
-
-export interface PlayerStats {
-  power: number;
-  speed: number;
-  technique: number;
-  stamina: number;
-}
-
-export interface PlayerEvaluations {
-  fairPlay: number;
-  punctuality: number;
-  teamSpirit: number;
-  generalTechnique: number;
-}
-
-export interface PlayerMatchHistoryItem {
-  id: string;
-  title: string;
-  date: string;
-  court: string;
-  result: "V" | "D";
-  score: string;
-}
-
-export interface Player {
-  id: string;
-  name: string;
-  nickname?: string;
-  email: string;
-  avatarUrl?: string;
-  rating: number; // Overall Rating (OVR) e.g., 92
-  tier: PlayerTier;
-  level: string; // e.g. "Nível 5.5 - Avançado"
-  preferredSide: PreferredSide;
-  stats: PlayerStats;
-  evaluations: PlayerEvaluations;
-  matchHistory?: PlayerMatchHistoryItem[];
-  tags?: string[];
-}
-
-export interface Participation {
-  id: string;
-  matchId: string;
-  player: Player;
-  team: number; // 1 = Dupla 1, 2 = Dupla 2, 0 = Não definido
-  status: "ACCEPTED" | "PENDING" | "REJECTED";
-}
-
-export interface Match {
-  id: string;
-  clubName: string;
-  location: string;
-  courtName: string;
-  dateTime: string;
-  dateCategory: "today" | "tomorrow" | "saturday" | "sunday" | "other";
-  pricePerPerson: number;
-  status: MatchStatus;
-  levelRequired?: string;
-  maxPlayers: number;
-  organizer: Player;
-  scorePair1: number | null;
-  scorePair2: number | null;
-  participations: Participation[];
-  pendingRequests: Participation[];
-}
-
-// ----------------------------------------------------
-// OpenAPI / Backend Contract Types (V1 API)
-// ----------------------------------------------------
-
-export interface PlayerInput {
-  name?: string;
-}
+// ---- Players --------------------------------------------------------------
 
 export interface PlayerOutput {
   id: string;
@@ -96,14 +23,31 @@ export interface PlayerOutput {
   rating: number;
 }
 
-export interface MatchInput {
-  dateTime: string; // ISO 8601 string
-  location?: string;
+export interface PlayerProfileOutput {
+  id: string;
+  name: string;
+  email: string;
+  rating: number;
+  currentRating: number;
+  formBonus: number;
+  form: Form;
+  mainPosition: PadelPosition;
+  ratingDrive: number;
+  ratingReves: number;
+  reliability: number;
+  provisional: boolean;
+  skillRatings: Partial<Record<Skill, number>>;
 }
+
+export interface PlayerInput {
+  name: string;
+}
+
+// ---- Matches ------------------------------------------------------------
 
 export interface MatchOutput {
   id: string;
-  dateTime: string;
+  dateTime: string; // ISO 8601
   location: string;
   status: MatchStatus;
   scorePair1: number | null;
@@ -111,20 +55,15 @@ export interface MatchOutput {
   organizer: PlayerOutput;
 }
 
-export interface JoinMatchInput {
-  team?: number; // 1 | 2
+export interface CreateMatchInput {
+  dateTime: string; // ISO 8601, must be in the future
+  location?: string;
+  position: PadelPosition; // organizer's slot position (team 1)
 }
 
-export interface ChangeTeamInput {
-  team: number; // 1 | 2
-}
-
-export interface ParticipationOutput {
-  id: string;
-  matchId: string;
-  player: PlayerOutput;
-  team: number;
-  status: "ACCEPTED" | "REJECTED";
+export interface MatchInput {
+  dateTime: string; // ISO 8601, must be in the future
+  location?: string;
 }
 
 export interface MatchResultInput {
@@ -132,9 +71,42 @@ export interface MatchResultInput {
   scorePair2: number;
 }
 
+// ---- Participations ---------------------------------------------------
+
+export interface JoinMatchInput {
+  team: number; // 1 | 2
+  position: PadelPosition;
+}
+
+export interface ChangeSlotInput {
+  team: number; // 1 | 2
+  position: PadelPosition;
+}
+
+export interface ParticipationOutput {
+  id: string;
+  matchId: string;
+  player: PlayerOutput;
+  team: number;
+  position: PadelPosition;
+  status: ParticipationStatus;
+}
+
+// ---- Evaluations ----------------------------------------------------
+
+export interface SkillRatingInput {
+  skill: Skill;
+  score: number; // 1..10
+}
+
+export interface SkillRatingOutput {
+  skill: Skill;
+  score: number;
+}
+
 export interface EvaluationInput {
   evaluatedPlayerId: string;
-  skillRatings: SkillRatingInput[]; // Exactly 5 skills
+  skillRatings: SkillRatingInput[]; // exactly 5, one per Skill
 }
 
 export interface EvaluationOutput {

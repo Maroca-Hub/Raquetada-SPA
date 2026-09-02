@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { useAuth } from "react-oidc-context";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
+import { isDevSession } from "../devSession";
 
 export function RequireAuth() {
   const auth = useAuth();
   const api = useApi();
   const location = useLocation();
 
-  const isDemo = localStorage.getItem("raquetada_demo_session") === "true";
+  const devSession = isDevSession();
   const [checkingProfile, setCheckingProfile] = useState(false);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
 
@@ -16,44 +17,26 @@ export function RequireAuth() {
     let active = true;
 
     async function checkProfile() {
-      const localOnboardingDone =
-        localStorage.getItem("raquetada_onboarding_completed") === "true";
-
-      if (localOnboardingDone) {
-        if (active) setHasProfile(true);
-        return;
-      }
-
-      if (auth.isAuthenticated) {
-        setCheckingProfile(true);
-        try {
-          const profile = await api.players.getMyProfile();
-          // Check if profile exists and has a configured name
-          if (profile && profile.name && profile.name.trim().length > 0) {
-            localStorage.setItem("raquetada_onboarding_completed", "true");
-            if (active) setHasProfile(true);
-          } else {
-            if (active) setHasProfile(false);
-          }
-        } catch {
-          // If profile does not exist yet on backend, user needs onboarding
-          if (active) setHasProfile(false);
-        } finally {
-          if (active) setCheckingProfile(false);
-        }
-      } else if (isDemo) {
-        if (active) setHasProfile(localOnboardingDone);
+      setCheckingProfile(true);
+      try {
+        const profile = await api.players.getMyProfile();
+        if (active) setHasProfile(Boolean(profile?.name && profile.name.trim().length > 0));
+      } catch {
+        // Profile not provisioned yet — send the user through onboarding.
+        if (active) setHasProfile(false);
+      } finally {
+        if (active) setCheckingProfile(false);
       }
     }
 
-    if (auth.isAuthenticated || isDemo) {
+    if (auth.isAuthenticated || devSession) {
       checkProfile();
     }
 
     return () => {
       active = false;
     };
-  }, [auth.isAuthenticated, isDemo, api]);
+  }, [auth.isAuthenticated, devSession, api]);
 
   if (auth.isLoading || checkingProfile) {
     return (
@@ -81,11 +64,10 @@ export function RequireAuth() {
     );
   }
 
-  if (!auth.isAuthenticated && !isDemo) {
+  if (!auth.isAuthenticated && !devSession) {
     return <Navigate to="/login" replace />;
   }
 
-  // If user has no profile and is not currently on /onboarding, redirect to /onboarding automatically
   if (hasProfile === false && location.pathname !== "/onboarding") {
     return <Navigate to="/onboarding" replace />;
   }

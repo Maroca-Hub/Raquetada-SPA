@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "react-oidc-context";
 import { useApi } from "../../hooks/useApi";
-import { mockService } from "../../services/mockData";
+import type { PadelPosition } from "../../types";
+import { POSITION_LABELS } from "../../services/api";
 
 interface CreateMatchModalProps {
   isOpen: boolean;
@@ -10,110 +10,76 @@ interface CreateMatchModalProps {
   onSuccess: (message: string) => void;
 }
 
-const DAY_OPTIONS = [
-  { id: "today", label: "Hoje", daysOffset: 0 },
-  { id: "tomorrow", label: "Amanhã", daysOffset: 1 },
-  { id: "saturday", label: "Sábado", daysOffset: 5 },
-  { id: "sunday", label: "Domingo", daysOffset: 6 },
-] as const;
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "12px 14px",
+  borderRadius: "10px",
+  backgroundColor: "var(--surface-container-high)",
+  border: "1px solid var(--border-subtle)",
+  color: "var(--on-surface)",
+  fontSize: "14px",
+  outline: "none",
+};
 
-const LEVEL_OPTIONS = [
-  "Todos os níveis",
-  "Iniciante (Nível 2.0 a 3.5)",
-  "Intermediário (Nível 4.0 a 4.5)",
-  "Avançado (Nível 5.0 a 5.5)",
-  "Pro / Especial (Nível 6.0+)",
-];
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  fontSize: "12px",
+  fontWeight: 700,
+  color: "var(--on-surface)",
+  marginBottom: 6,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
+function defaultDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
 
 export function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateMatchModalProps) {
-  const auth = useAuth();
   const api = useApi();
   const navigate = useNavigate();
 
-  const [clubName, setClubName] = useState("");
-  const [additionalInfo, setAdditionalInfo] = useState("");
-  const [dayCategory, setDayCategory] = useState<"today" | "tomorrow" | "saturday" | "sunday">("today");
-  const [timeRange, setTimeRange] = useState("19:30 - 21:00");
-  const [price, setPrice] = useState(45);
-  const [level, setLevel] = useState("Todos os níveis");
+  const [location, setLocation] = useState("");
+  const [date, setDate] = useState(defaultDate);
+  const [time, setTime] = useState("19:30");
+  const [position, setPosition] = useState<PadelPosition>("DRIVE");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
-    if (!clubName.trim()) {
-      alert("Por favor, informe o nome do clube ou local da partida.");
+    if (!location.trim()) {
+      setError("Informe o local da partida.");
+      return;
+    }
+
+    const dateTime = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(dateTime.getTime()) || dateTime.getTime() <= Date.now()) {
+      setError("Escolha uma data e hora no futuro.");
       return;
     }
 
     setSubmitting(true);
-    const dayObj = DAY_OPTIONS.find((d) => d.id === dayCategory) || DAY_OPTIONS[0];
-    const formattedDateTime = `${dayObj.label}, ${timeRange}`;
-    const locationString = additionalInfo.trim()
-      ? `${clubName.trim()} — ${additionalInfo.trim()}`
-      : clubName.trim();
-    const courtName = additionalInfo.trim() || "Quadra Aberta";
-
-    if (auth.isAuthenticated) {
-      try {
-        // Build ISO string for API
-        const targetDate = new Date();
-        targetDate.setDate(targetDate.getDate() + dayObj.daysOffset);
-        const timeParts = timeRange.split("-")[0].trim().split(":");
-        const hours = Number(timeParts[0]) || 19;
-        const minutes = Number(timeParts[1]) || 30;
-        targetDate.setHours(hours, minutes, 0, 0);
-
-        const createdMatchOutput = await api.matches.create({
-          dateTime: targetDate.toISOString(),
-          location: locationString,
-        });
-
-        // Automatically join Dupla 1 as organizer
-        try {
-          await api.matches.join(createdMatchOutput.id, { team: 1 });
-        } catch (joinErr) {
-          console.warn("Auto-join participation note:", joinErr);
-        }
-
-        onClose();
-        onSuccess(`Partida criada com sucesso no ${clubName.trim()}!`);
-        navigate(`/matches/${createdMatchOutput.id}`);
-      } catch (err) {
-        console.error("API create match error:", err);
-        // Fallback to local
-        const localMatch = mockService.createMatch({
-          clubName: clubName.trim(),
-          courtName,
-          location: locationString,
-          dateTime: formattedDateTime,
-          dateCategory: dayCategory,
-          pricePerPerson: Number(price) || 45,
-          levelRequired: level,
-        });
-        onClose();
-        onSuccess(`Partida criada com sucesso!`);
-        navigate(`/matches/${localMatch.id}`);
-      }
-    } else {
-      const createdMatch = mockService.createMatch({
-        clubName: clubName.trim(),
-        courtName,
-        location: locationString,
-        dateTime: formattedDateTime,
-        dateCategory: dayCategory,
-        pricePerPerson: Number(price) || 45,
-        levelRequired: level,
+    try {
+      const created = await api.matches.create({
+        dateTime: dateTime.toISOString(),
+        location: location.trim(),
+        position,
       });
-
       onClose();
-      onSuccess(`Partida criada com sucesso no ${createdMatch.clubName}!`);
-      navigate(`/matches/${createdMatch.id}`);
+      onSuccess("Partida criada com sucesso!");
+      navigate(`/matches/${created.id}`);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
     }
-
-    setSubmitting(false);
   };
 
   return (
@@ -142,12 +108,9 @@ export function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateMatchModa
           backgroundColor: "rgba(19, 19, 19, 0.95)",
           border: "1px solid var(--border-subtle)",
           boxShadow: "0 25px 60px rgba(0, 0, 0, 0.9)",
-          position: "relative",
-          animation: "fadeIn 0.25s ease-out",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div
           style={{
             display: "flex",
@@ -158,34 +121,9 @@ export function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateMatchModa
             paddingBottom: "14px",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "10px",
-                background: "rgba(210, 240, 0, 0.15)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--primary-fixed)",
-                border: "1px solid rgba(210, 240, 0, 0.3)",
-              }}
-            >
-              <span className="material-symbols-outlined filled" style={{ fontSize: "22px" }}>
-                sports_tennis
-              </span>
-            </div>
-            <div>
-              <h2
-                className="font-display"
-                style={{ fontSize: "20px", fontWeight: 800, color: "var(--on-surface)" }}
-              >
-                Criar Nova Partida
-              </h2>
-            </div>
-          </div>
-
+          <h2 className="font-display" style={{ fontSize: "20px", fontWeight: 800, color: "var(--on-surface)" }}>
+            Criar nova partida
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -208,241 +146,58 @@ export function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateMatchModa
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {/* Clube / Arena */}
           <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "12px",
-                fontWeight: 700,
-                color: "var(--on-surface)",
-                marginBottom: 6,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}
-            >
-              Nome do Clube / Local
-            </label>
+            <label style={labelStyle}>Local</label>
             <input
               type="text"
-              value={clubName}
-              onChange={(e) => setClubName(e.target.value)}
-              placeholder="Ex: Padel Pro Arena, Clube de Padel Elite..."
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: "10px",
-                backgroundColor: "var(--surface-container-high)",
-                border: "1px solid var(--border-subtle)",
-                color: "var(--on-surface)",
-                fontSize: "14px",
-                outline: "none",
-              }}
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Ex: Arena Zona Sul"
+              maxLength={200}
+              style={inputStyle}
               required
             />
           </div>
 
-          {/* Informações adicionais / Quadra */}
-          <div>
-            <label
-              style={{
-                display: "block",
-                fontSize: "12px",
-                fontWeight: 700,
-                color: "var(--on-surface)",
-                marginBottom: 6,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}
-            >
-              Quadra / Informações Adicionais (Opcional)
-            </label>
-            <input
-              type="text"
-              value={additionalInfo}
-              onChange={(e) => setAdditionalInfo(e.target.value)}
-              placeholder="Ex: Quadra 2, Quadra Central coberta, etc."
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                borderRadius: "10px",
-                backgroundColor: "var(--surface-container-high)",
-                border: "1px solid var(--border-subtle)",
-                color: "var(--on-surface)",
-                fontSize: "14px",
-                outline: "none",
-              }}
-            />
-          </div>
-
-          {/* Dia & Horário */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "var(--on-surface)",
-                  marginBottom: 6,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                Dia
-              </label>
-              <select
-                value={dayCategory}
-                onChange={(e) => setDayCategory(e.target.value as "today" | "tomorrow" | "saturday" | "sunday")}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  backgroundColor: "var(--surface-container-high)",
-                  border: "1px solid var(--border-subtle)",
-                  color: "var(--on-surface)",
-                  fontSize: "14px",
-                  outline: "none",
-                }}
-              >
-                {DAY_OPTIONS.map((d) => (
-                  <option key={d.id} value={d.id} style={{ background: "#1c1b1b" }}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
+              <label style={labelStyle}>Data</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} required />
             </div>
-
             <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "var(--on-surface)",
-                  marginBottom: 6,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                Horário
-              </label>
-              <input
-                type="text"
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value)}
-                placeholder="Ex: 19:30 - 21:00"
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  backgroundColor: "var(--surface-container-high)",
-                  border: "1px solid var(--border-subtle)",
-                  color: "var(--on-surface)",
-                  fontSize: "14px",
-                  outline: "none",
-                }}
-                required
-              />
+              <label style={labelStyle}>Hora</label>
+              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={inputStyle} required />
             </div>
           </div>
 
-          {/* Preço & Nível */}
-          <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: "12px" }}>
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "var(--on-surface)",
-                  marginBottom: 6,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                R$ / Pessoa
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="5"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  backgroundColor: "var(--surface-container-high)",
-                  border: "1px solid var(--border-subtle)",
-                  color: "var(--primary-fixed)",
-                  fontFamily: "var(--font-display)",
-                  fontWeight: 800,
-                  fontSize: "16px",
-                  outline: "none",
-                }}
-                required
-              />
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  color: "var(--on-surface)",
-                  marginBottom: 6,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                Nível Sugerido
-              </label>
-              <select
-                value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: "10px",
-                  backgroundColor: "var(--surface-container-high)",
-                  border: "1px solid var(--border-subtle)",
-                  color: "var(--on-surface)",
-                  fontSize: "13px",
-                  outline: "none",
-                }}
-              >
-                {LEVEL_OPTIONS.map((lvl) => (
-                  <option key={lvl} value={lvl} style={{ background: "#1c1b1b" }}>
-                    {lvl}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{ display: "flex", gap: "12px", marginTop: "10px" }}>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="btn-secondary"
-              style={{ flex: 1 }}
+          <div>
+            <label style={labelStyle}>Sua posição (Dupla 1)</label>
+            <select
+              value={position}
+              onChange={(e) => setPosition(e.target.value as PadelPosition)}
+              style={inputStyle}
             >
+              <option value="DRIVE" style={{ background: "#1c1b1b" }}>
+                {POSITION_LABELS.DRIVE}
+              </option>
+              <option value="REVES" style={{ background: "#1c1b1b" }}>
+                {POSITION_LABELS.REVES}
+              </option>
+            </select>
+          </div>
+
+          {error && (
+            <p style={{ color: "var(--error)", fontSize: "13px", fontWeight: 600 }}>{error}</p>
+          )}
+
+          <div style={{ display: "flex", gap: "12px", marginTop: "10px" }}>
+            <button type="button" onClick={onClose} disabled={submitting} className="btn-secondary" style={{ flex: 1 }}>
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="btn-primary"
-              style={{ flex: 2, fontSize: "15px" }}
-            >
+            <button type="submit" disabled={submitting} className="btn-primary" style={{ flex: 2, fontSize: "15px" }}>
               <span className="material-symbols-outlined filled">add_circle</span>
-              {submitting ? "Publicando..." : "Publicar Partida"}
+              {submitting ? "Publicando..." : "Publicar partida"}
             </button>
           </div>
         </form>

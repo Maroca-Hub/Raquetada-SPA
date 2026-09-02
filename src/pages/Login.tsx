@@ -1,20 +1,18 @@
 import { useAuth } from "react-oidc-context";
 import { Navigate, useNavigate } from "react-router-dom";
+import { enableDevSession, isDevSession } from "../devSession";
 
 export function Login() {
   const auth = useAuth();
   const navigate = useNavigate();
 
-  const isDemo = localStorage.getItem("raquetada_demo_session") === "true";
-
-  if (auth.isAuthenticated || isDemo) {
+  if (auth.isAuthenticated || isDevSession()) {
     return <Navigate to="/" replace />;
   }
 
-  const handleDevMockLogin = () => {
-    localStorage.setItem("raquetada_demo_session", "true");
-    const isOnboardingDone = localStorage.getItem("raquetada_onboarding_completed") === "true";
-    navigate(isOnboardingDone ? "/" : "/onboarding");
+  const handleDevLogin = () => {
+    enableDevSession();
+    navigate("/");
   };
 
   return (
@@ -123,12 +121,12 @@ export function Login() {
               </span>
               <button
                 type="button"
-                onClick={handleDevMockLogin}
+                onClick={handleDevLogin}
                 className="btn-secondary"
                 style={{ width: "100%", padding: "10px", fontSize: "13px" }}
               >
                 <span className="material-symbols-outlined">play_circle</span>
-                Login com Perfil Mockado (Dev)
+                Entrar em modo dev (sem Keycloak)
               </button>
             </div>
           )}

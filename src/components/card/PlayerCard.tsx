@@ -1,59 +1,31 @@
-import type { Player } from "../../types";
+import type { PlayerProfileOutput, Skill } from "../../types";
+import { FORM_LABELS, POSITION_LABELS, SKILL_LABELS, SKILL_ORDER } from "../../services/api";
 
 interface PlayerCardProps {
-  player: Player;
-  showAttributes?: boolean;
+  profile: PlayerProfileOutput;
+  showSkills?: boolean;
   showAction?: boolean;
   actionText?: string;
   onAction?: () => void;
 }
 
 export function PlayerCard({
-  player,
-  showAttributes = true,
+  profile,
+  showSkills = true,
   showAction = false,
-  actionText = "DESAFIAR",
+  actionText = "AÇÃO",
   onAction,
 }: PlayerCardProps) {
-  const getTierClass = (tier: string) => {
-    switch (tier) {
-      case "DIAMANTE":
-        return "badge-tier-diamante";
-      case "OURO":
-        return "badge-tier-ouro";
-      case "PRATA":
-        return "badge-tier-prata";
-      default:
-        return "badge-tier-bronze";
-    }
-  };
-
-  const getSideText = (side: string) => {
-    switch (side) {
-      case "DRIVE":
-        return "Lado: Drive (Direita)";
-      case "REVES":
-        return "Lado: Revés (Esquerda)";
-      default:
-        return "Lado: Ambos os Lados";
-    }
-  };
+  const formDelta = profile.formBonus > 0 ? `+${profile.formBonus}` : `${profile.formBonus}`;
 
   return (
     <div className="player-card-fut" style={{ padding: 24 }}>
-      {/* Background glow effects */}
       <div
         className="glow-ambient"
-        style={{
-          width: 140,
-          height: 140,
-          background: "rgba(210, 240, 0, 0.15)",
-          top: -20,
-          right: -20,
-        }}
+        style={{ width: 140, height: 140, background: "rgba(210, 240, 0, 0.15)", top: -20, right: -20 }}
       />
 
-      {/* Top Bar: Rating & Badges */}
+      {/* Top bar: overall + form / provisional badges */}
       <div
         style={{
           display: "flex",
@@ -75,7 +47,7 @@ export function PlayerCard({
               letterSpacing: "-0.04em",
             }}
           >
-            {player.rating}
+            {profile.currentRating}
           </span>
           <span
             style={{
@@ -86,32 +58,45 @@ export function PlayerCard({
               textTransform: "uppercase",
             }}
           >
-            OVERALL
+            Rating atual · base {profile.rating}
           </span>
         </div>
 
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <span className={`badge-tier ${getTierClass(player.tier)}`}>
-            {player.tier}
-          </span>
           <span
             style={{
               fontSize: "10px",
-              fontWeight: 700,
+              fontWeight: 800,
               textTransform: "uppercase",
               padding: "3px 8px",
               borderRadius: "4px",
-              background: "rgba(173, 198, 255, 0.15)",
-              color: "var(--secondary)",
-              border: "1px solid rgba(173, 198, 255, 0.3)",
+              background: "rgba(210, 240, 0, 0.15)",
+              color: "var(--primary-fixed)",
+              border: "1px solid rgba(210, 240, 0, 0.3)",
             }}
           >
-            {player.preferredSide}
+            Forma: {FORM_LABELS[profile.form] ?? profile.form} ({formDelta})
           </span>
+          {profile.provisional && (
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                textTransform: "uppercase",
+                padding: "3px 8px",
+                borderRadius: "4px",
+                background: "rgba(173, 198, 255, 0.15)",
+                color: "var(--secondary)",
+                border: "1px solid rgba(173, 198, 255, 0.3)",
+              }}
+            >
+              Provisório
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Center: Avatar Photo & Name */}
+      {/* Name + position */}
       <div
         style={{
           display: "flex",
@@ -130,46 +115,24 @@ export function PlayerCard({
             height: 104,
             borderRadius: "50%",
             border: "3px solid var(--primary-fixed)",
-            overflow: "hidden",
             backgroundColor: "var(--surface-container-high)",
             marginBottom: 14,
-            position: "relative",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--primary-fixed)",
           }}
         >
-          {player.avatarUrl ? (
-            <img
-              src={player.avatarUrl}
-              alt={player.name}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            />
-          ) : (
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--primary-fixed)",
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: "52px" }}>
-                person
-              </span>
-            </div>
-          )}
+          <span className="material-symbols-outlined" style={{ fontSize: "52px" }}>
+            person
+          </span>
         </div>
 
         <h2
           className="font-display"
-          style={{
-            fontSize: "22px",
-            fontWeight: 800,
-            color: "var(--on-surface)",
-            letterSpacing: "-0.01em",
-          }}
+          style={{ fontSize: "22px", fontWeight: 800, color: "var(--on-surface)", letterSpacing: "-0.01em" }}
         >
-          {player.name} {player.nickname ? `"${player.nickname}"` : ""}
+          {profile.name}
         </h2>
 
         <p
@@ -182,12 +145,17 @@ export function PlayerCard({
             marginTop: 4,
           }}
         >
-          {player.level} • {getSideText(player.preferredSide)}
+          Lado: {POSITION_LABELS[profile.mainPosition] ?? profile.mainPosition}
         </p>
+
+        <div style={{ display: "flex", gap: 16, marginTop: 10 }}>
+          <RatingPill label="Drive" value={profile.ratingDrive} />
+          <RatingPill label="Revés" value={profile.ratingReves} />
+        </div>
       </div>
 
-      {/* Attributes Bars */}
-      {showAttributes && player.stats && (
+      {/* Skill ratings (0..10, from peer evaluations) */}
+      {showSkills && (
         <div
           style={{
             display: "flex",
@@ -211,29 +179,25 @@ export function PlayerCard({
               marginBottom: 2,
             }}
           >
-            Atributos Físicos e Técnicos
+            Fundamentos avaliados
           </div>
 
-          <AttributeItem label="Potência" value={player.stats.power} />
-          <AttributeItem label="Velocidade" value={player.stats.speed} />
-          <AttributeItem label="Técnica" value={player.stats.technique} />
-          <AttributeItem label="Resistência" value={player.stats.stamina} />
+          {SKILL_ORDER.map((skill) => (
+            <SkillItem
+              key={skill}
+              label={SKILL_LABELS[skill]}
+              value={profile.skillRatings[skill as Skill]}
+            />
+          ))}
         </div>
       )}
 
-      {/* Action Button */}
       {showAction && (
         <button
           type="button"
           onClick={onAction}
           className="btn-primary"
-          style={{
-            width: "100%",
-            marginTop: 16,
-            position: "relative",
-            zIndex: 2,
-            borderRadius: "var(--radius-full)",
-          }}
+          style={{ width: "100%", marginTop: 16, position: "relative", zIndex: 2, borderRadius: "var(--radius-full)" }}
         >
           {actionText}
         </button>
@@ -242,7 +206,27 @@ export function PlayerCard({
   );
 }
 
-function AttributeItem({ label, value }: { label: string; value: number }) {
+function RatingPill({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <span
+        className="font-display"
+        style={{ fontSize: "18px", fontWeight: 900, color: "var(--on-surface)", lineHeight: 1 }}
+      >
+        {value}
+      </span>
+      <span
+        style={{ fontSize: "10px", color: "var(--on-surface-variant)", textTransform: "uppercase", fontWeight: 700 }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function SkillItem({ label, value }: { label: string; value?: number }) {
+  const has = typeof value === "number";
+  const pct = has ? Math.max(0, Math.min(100, (value as number) * 10)) : 0;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <div
@@ -256,11 +240,11 @@ function AttributeItem({ label, value }: { label: string; value: number }) {
       >
         <span style={{ color: "var(--on-surface)" }}>{label}</span>
         <span style={{ color: "var(--primary-fixed)", fontFamily: "var(--font-display)" }}>
-          {value}/100
+          {has ? `${(value as number).toFixed(1)}/10` : "—"}
         </span>
       </div>
       <div className="stat-bar-track">
-        <div className="stat-bar-fill" style={{ width: `${value}%` }} />
+        <div className="stat-bar-fill" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );

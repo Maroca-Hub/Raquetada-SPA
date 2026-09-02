@@ -11,10 +11,10 @@ import { Onboarding } from "./pages/Onboarding";
 export const router = createBrowserRouter([
   { path: "/login", element: <Login /> },
   { path: "/callback", element: <Callback /> },
-  { path: "/onboarding", element: <Onboarding /> },
   {
     element: <RequireAuth />,
     children: [
+      { path: "/onboarding", element: <Onboarding /> },
       { path: "/", element: <Matches /> },
       { path: "/feed", element: <Matches /> },
       { path: "/matches/:id", element: <MatchDetail /> },
