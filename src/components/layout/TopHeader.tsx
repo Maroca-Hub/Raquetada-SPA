@@ -9,7 +9,10 @@ export function TopHeader({ title, showBack }: TopHeaderProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isHome = location.pathname === "/" || location.pathname === "/feed";
+  const isHome =
+    location.pathname === "/" ||
+    location.pathname === "/feed" ||
+    location.pathname === "/radar";
   const shouldShowBack = showBack ?? !isHome;
 
   return (

@@ -13,7 +13,7 @@ type StatusFilter = MatchStatus | "ALL";
 const FILTERS: { id: MatchStatus; label: string }[] = [
   { id: "AWAITING_PLAYERS", label: "Abertas" },
   { id: "SCHEDULED", label: "Confirmadas" },
-  { id: "FINISHED", label: "Finalizadas" },
+  { id: "FINISHED", label: "Concluídas" },
 ];
 
 export function Matches() {

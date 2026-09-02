@@ -32,7 +32,7 @@ export function Radar() {
   const isDesc = sort === "RATING_DESC";
 
   return (
-    <Layout title="Radar">
+    <Layout>
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         <ShareAppBanner />
 

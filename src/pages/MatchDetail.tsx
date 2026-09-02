@@ -22,7 +22,7 @@ import type {
 const STATUS_LABEL: Record<string, string> = {
   AWAITING_PLAYERS: "Aguardando jogadores",
   SCHEDULED: "Confirmada",
-  FINISHED: "Finalizada",
+  FINISHED: "Concluída",
   CANCELLED: "Cancelada",
 };
 
@@ -161,6 +161,7 @@ export function MatchDetail() {
 
   const handleSlotClick = async (team: number, position: PadelPosition) => {
     if (slotOf(team, position)) return;
+    if (isFinished || isCancelled) return;
     try {
       if (!isConfirmed) {
         if (match.status !== "AWAITING_PLAYERS") return;
@@ -443,6 +444,7 @@ export function MatchDetail() {
             canPickSlot={(team, position) =>
               !slotOf(team, position) &&
               !isFinished &&
+              !isCancelled &&
               (isConfirmed ||
                 (!isConfirmed && match.status === "AWAITING_PLAYERS"))
             }

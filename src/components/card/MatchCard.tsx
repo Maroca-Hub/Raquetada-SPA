@@ -13,7 +13,7 @@ const MATCH_CAPACITY = 4;
 const STATUS_LABEL: Record<string, string> = {
   AWAITING_PLAYERS: "Aguardando jogadores",
   SCHEDULED: "Confirmada",
-  FINISHED: "Finalizada",
+  FINISHED: "Concluída",
   CANCELLED: "Cancelada",
 };
 
