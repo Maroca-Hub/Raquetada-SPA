@@ -12,6 +12,7 @@ import type {
   PlayerInput,
   PlayerOutput,
   PlayerProfileOutput,
+  Skill,
 } from "../types";
 import { DEV_USER, isDevSession } from "../devSession";
 
@@ -160,6 +161,15 @@ export const SKILL_ORDER = [
   "DEFENSE",
   "POSITIONING",
 ] as const;
+
+// Player valences: radar axes (clockwise from top) / left-to-right skill row.
+export const SKILL_AXES: { key: Skill; short: string }[] = [
+  { key: "SERVE", short: "SAQ" },
+  { key: "SMASH", short: "SMA" },
+  { key: "DEFENSE", short: "DEF" },
+  { key: "POSITIONING", short: "POS" },
+  { key: "LOB", short: "LOB" },
+];
 
 export const FORM_LABELS: Record<string, string> = {
   AWFUL: "Péssima",

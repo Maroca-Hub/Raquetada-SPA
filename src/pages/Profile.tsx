@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { PlayerCard } from "../components/card/PlayerCard";
 import { SkillRadar } from "../components/card/SkillRadar";
+import { ShareCardButton } from "../components/card/ShareCardButton";
 import { Toast } from "../components/common/Toast";
 import { useApi } from "../hooks/useApi";
 import { isRatingReliable } from "../services/api";
@@ -129,9 +130,14 @@ export function Profile() {
   return (
     <Layout title="Meu perfil">
       <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-        <section className="animate-fade-in">
+        <section
+          className="animate-fade-in"
+          style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+        >
           <PlayerCard profile={profile} />
         </section>
+
+        <ShareCardButton profile={profile} />
 
         <section
           className="glass-panel animate-fade-in"

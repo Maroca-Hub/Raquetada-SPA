@@ -1,11 +1,13 @@
 import type { PlayerProfileOutput } from "../../types";
-import { POSITION_LABELS } from "../../services/api";
+import { POSITION_LABELS, SKILL_AXES } from "../../services/api";
 
 const clampPct = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+const scale10 = (v?: number) => Math.round((v ?? 0) * 10);
 
 interface PlayerCardProps {
   profile: PlayerProfileOutput;
   showProgress?: boolean;
+  showSkillsRow?: boolean;
   showAction?: boolean;
   actionText?: string;
   onAction?: () => void;
@@ -14,6 +16,7 @@ interface PlayerCardProps {
 export function PlayerCard({
   profile,
   showProgress = true,
+  showSkillsRow = false,
   showAction = false,
   actionText = "AÇÃO",
   onAction,
@@ -195,6 +198,57 @@ export function PlayerCard({
               style={{ width: `${clampPct(profile.progressToNextRating)}%` }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Valences row */}
+      {showSkillsRow && (
+        <div
+          style={{
+            position: "relative",
+            zIndex: 2,
+            display: "grid",
+            gridTemplateColumns: `repeat(${SKILL_AXES.length}, 1fr)`,
+            gap: 6,
+            background: "rgba(14, 14, 14, 0.6)",
+            padding: "14px 10px",
+            borderRadius: "14px",
+            border: "1px solid var(--border-subtle)",
+          }}
+        >
+          {SKILL_AXES.map((s) => (
+            <div
+              key={s.key}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  color: "var(--on-surface-variant)",
+                }}
+              >
+                {s.short}
+              </span>
+              <span
+                className="font-display"
+                style={{
+                  fontSize: "18px",
+                  fontWeight: 900,
+                  lineHeight: 1,
+                  color: "var(--primary-fixed)",
+                }}
+              >
+                {scale10(profile.skillRatings[s.key])}
+              </span>
+            </div>
+          ))}
         </div>
       )}
 

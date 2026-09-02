@@ -1,13 +1,7 @@
 import type { Skill } from "../../types";
+import { SKILL_AXES } from "../../services/api";
 
-// Radar axes, clockwise from the top.
-const RADAR_SKILLS: { key: Skill; short: string }[] = [
-  { key: "SERVE", short: "SAQ" },
-  { key: "SMASH", short: "SMA" },
-  { key: "DEFENSE", short: "DEF" },
-  { key: "POSITIONING", short: "POS" },
-  { key: "LOB", short: "LOB" },
-];
+const RADAR_SKILLS = SKILL_AXES;
 
 export function SkillRadar({ skills }: { skills: Partial<Record<Skill, number>> }) {
   return (
