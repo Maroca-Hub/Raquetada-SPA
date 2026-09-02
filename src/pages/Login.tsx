@@ -114,8 +114,8 @@ export function Login() {
             Entrar
           </button>
 
-          {/* Dev-only Mock Login option */}
-          {import.meta.env.DEV && (
+          {(import.meta.env.DEV ||
+            import.meta.env.VITE_ENABLE_DEV_LOGIN === "true") && (
             <div
               style={{
                 marginTop: 8,
