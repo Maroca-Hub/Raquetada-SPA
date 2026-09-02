@@ -4,6 +4,7 @@ import { useParams, Link } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { ShareButton } from "../components/common/ShareButton";
 import { Toast } from "../components/common/Toast";
+import { EditMatchModal } from "../components/match/EditMatchModal";
 import { useApi } from "../hooks/useApi";
 import {
   POSITION_LABELS,
@@ -53,6 +54,7 @@ export function MatchDetail() {
   const [notFound, setNotFound] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -515,7 +517,21 @@ export function MatchDetail() {
         )}
 
         {canCancel && (
-          <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="btn-secondary"
+              style={{ width: "100%" }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: "18px" }}
+              >
+                edit_calendar
+              </span>
+              Editar partida
+            </button>
             <button
               type="button"
               onClick={() => setConfirmingCancel(true)}
@@ -533,6 +549,18 @@ export function MatchDetail() {
           </section>
         )}
       </div>
+
+      {editing && (
+        <EditMatchModal
+          match={match}
+          onClose={() => setEditing(false)}
+          onSaved={async () => {
+            setEditing(false);
+            setToastMessage("Partida atualizada.");
+            await loadData();
+          }}
+        />
+      )}
 
       {confirmingCancel && (
         <CancelMatchModal
