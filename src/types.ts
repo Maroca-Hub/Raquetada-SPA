@@ -28,6 +28,20 @@ export interface PlayerOutput {
 
 export type PlayerSort = "RATING_ASC" | "RATING_DESC";
 
+// Spring `Page<T>` wrapper. Page size is fixed server-side (20); the client
+// only sends `?page=N` (1-indexed).
+export interface Page<T> {
+  content: T[];
+  last?: boolean;
+  first?: boolean;
+  number?: number;
+  size?: number;
+  totalPages?: number;
+  totalElements?: number;
+  numberOfElements?: number;
+  empty?: boolean;
+}
+
 export interface PlayerProfileOutput {
   id: string;
   name: string;

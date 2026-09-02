@@ -8,6 +8,7 @@ import type {
   MatchOutput,
   MatchResultInput,
   MatchStatus,
+  Page,
   ParticipationOutput,
   PlayerInput,
   PlayerOutput,
@@ -59,14 +60,26 @@ export function createApi(getToken: () => string | undefined) {
       : ((await response.json()) as T);
   }
 
+  // Tolerates the endpoint returning either a Spring `Page<T>` or a bare `T[]`
+  // (the API's list endpoints are being migrated to pagination).
+  async function requestPage<T>(path: string): Promise<Page<T>> {
+    const res = await request<Page<T> | T[]>(path);
+    return Array.isArray(res) ? { content: res, last: true } : res;
+  }
+
   return {
     matches: {
-      list: (params?: { status?: MatchStatus; organizerId?: string }) => {
+      list: (params?: {
+        status?: MatchStatus;
+        organizerId?: string;
+        page?: number;
+      }) => {
         const search = new URLSearchParams();
         if (params?.status) search.set("status", params.status);
         if (params?.organizerId) search.set("organizerId", params.organizerId);
+        if (params?.page != null) search.set("page", String(params.page));
         const query = search.toString();
-        return request<MatchOutput[]>(
+        return requestPage<MatchOutput>(
           `/api/v1/matches${query ? `?${query}` : ""}`,
         );
       },
@@ -128,10 +141,15 @@ export function createApi(getToken: () => string | undefined) {
           method: "PATCH",
           body: JSON.stringify(body),
         }),
-      list: (params?: { sort?: PlayerSort }) =>
-        request<PlayerOutput[]>(
-          `/api/v1/players${params?.sort ? `?sort=${params.sort}` : ""}`,
-        ),
+      list: (params?: { sort?: PlayerSort; page?: number }) => {
+        const search = new URLSearchParams();
+        if (params?.sort) search.set("sort", params.sort);
+        if (params?.page != null) search.set("page", String(params.page));
+        const query = search.toString();
+        return requestPage<PlayerOutput>(
+          `/api/v1/players${query ? `?${query}` : ""}`,
+        );
+      },
       get: (id: string) =>
         request<PlayerProfileOutput>(`/api/v1/players/${id}`),
       listReceivedEvaluations: (id: string) =>

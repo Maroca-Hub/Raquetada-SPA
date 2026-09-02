@@ -1,41 +1,32 @@
-import { useState, useEffect } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
+import { InfiniteScrollSentinel } from "../components/common/InfiniteScrollSentinel";
 import { useApi } from "../hooks/useApi";
+import { usePaginatedList } from "../hooks/usePaginatedList";
 import type { PlayerOutput, PlayerSort } from "../types";
 
 const POSITION_SHORT: Record<string, string> = { DRIVE: "Drive", REVES: "Revés" };
 
 export function Radar() {
   const api = useApi();
-
-  const [players, setPlayers] = useState<PlayerOutput[]>([]);
   const [sort, setSort] = useState<PlayerSort>("RATING_DESC");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const list = await api.players.list({ sort });
-        if (cancelled) return;
-        setError(null);
-        setPlayers(list);
-      } catch (err) {
-        if (!cancelled) {
-          setError((err as Error).message);
-          setPlayers([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [api, sort]);
+  const fetchPage = useCallback(
+    (page: number) => api.players.list({ sort, page }),
+    [api, sort],
+  );
+
+  const {
+    items: players,
+    total,
+    loading,
+    loadingMore,
+    error,
+    hasMore,
+    loadMore,
+    reload,
+  } = usePaginatedList<PlayerOutput>(fetchPage);
 
   const isDesc = sort === "RATING_DESC";
 
@@ -58,7 +49,7 @@ export function Radar() {
               letterSpacing: "0.06em",
             }}
           >
-            {players.length} jogador{players.length === 1 ? "" : "es"}
+            {total ?? players.length} jogador{(total ?? players.length) === 1 ? "" : "es"}
           </span>
 
           <button
@@ -71,7 +62,10 @@ export function Radar() {
             className="filter-chip active"
             style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "16px" }}
+            >
               {isDesc ? "arrow_downward" : "arrow_upward"}
             </span>
             {isDesc ? "Maior geral" : "Menor geral"}
@@ -79,27 +73,63 @@ export function Radar() {
         </div>
 
         {loading ? (
-          <div style={{ textAlign: "center", padding: "40px", color: "var(--primary-fixed)" }}>
+          <div
+            style={{
+              textAlign: "center",
+              padding: "40px",
+              color: "var(--primary-fixed)",
+            }}
+          >
             <span
               className="material-symbols-outlined"
               style={{ fontSize: "32px", animation: "spin 1s linear infinite" }}
             >
               sports_tennis
             </span>
-            <p style={{ marginTop: 8, fontSize: "13px", fontWeight: 600 }}>Carregando jogadores...</p>
+            <p style={{ marginTop: 8, fontSize: "13px", fontWeight: 600 }}>
+              Carregando jogadores...
+            </p>
           </div>
         ) : error ? (
           <div
             className="glass-panel"
-            style={{ borderRadius: "16px", padding: "28px 20px", textAlign: "center", color: "var(--error)" }}
+            style={{
+              borderRadius: "16px",
+              padding: "28px 20px",
+              textAlign: "center",
+              color: "var(--error)",
+            }}
           >
-            <p style={{ fontWeight: 600 }}>Não foi possível carregar os jogadores.</p>
-            <p style={{ fontSize: "12px", color: "var(--on-surface-variant)", marginTop: 4 }}>{error}</p>
+            <p style={{ fontWeight: 600 }}>
+              Não foi possível carregar os jogadores.
+            </p>
+            <p
+              style={{
+                fontSize: "12px",
+                color: "var(--on-surface-variant)",
+                marginTop: 4,
+              }}
+            >
+              {error}
+            </p>
+            <button
+              type="button"
+              onClick={reload}
+              className="btn-secondary"
+              style={{ marginTop: 12 }}
+            >
+              Tentar novamente
+            </button>
           </div>
         ) : players.length === 0 ? (
           <div
             className="glass-panel"
-            style={{ borderRadius: "16px", padding: "36px 20px", textAlign: "center", color: "var(--on-surface-variant)" }}
+            style={{
+              borderRadius: "16px",
+              padding: "36px 20px",
+              textAlign: "center",
+              color: "var(--on-surface-variant)",
+            }}
           >
             Nenhum jogador cadastrado ainda.
           </div>
@@ -152,7 +182,14 @@ export function Radar() {
                   {p.name.charAt(0).toUpperCase()}
                 </div>
 
-                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
                   <span
                     style={{
                       fontSize: "14px",
@@ -165,8 +202,16 @@ export function Radar() {
                   >
                     {p.name}
                   </span>
-                  <span style={{ fontSize: "11px", color: "var(--on-surface-variant)", fontWeight: 600 }}>
-                    {p.mainPosition ? POSITION_SHORT[p.mainPosition] : "Sem partidas"}
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      color: "var(--on-surface-variant)",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {p.mainPosition
+                      ? POSITION_SHORT[p.mainPosition]
+                      : "Sem partidas"}
                   </span>
                 </div>
 
@@ -183,6 +228,31 @@ export function Radar() {
                 </span>
               </Link>
             ))}
+
+            {loadingMore && (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "12px",
+                  color: "var(--primary-fixed)",
+                }}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{
+                    fontSize: "24px",
+                    animation: "spin 1s linear infinite",
+                  }}
+                >
+                  sports_tennis
+                </span>
+              </div>
+            )}
+
+            <InfiniteScrollSentinel
+              onReach={loadMore}
+              disabled={!hasMore || loadingMore}
+            />
           </div>
         )}
       </div>
