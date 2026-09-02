@@ -99,6 +99,8 @@ export function createApi(getToken: () => string | undefined) {
           method: "POST",
           body: JSON.stringify(body),
         }),
+      cancel: (id: string) =>
+        request<MatchOutput>(`/api/v1/matches/${id}/cancel`, { method: "POST" }),
 
       listParticipations: (matchId: string) =>
         request<ParticipationOutput[]>(

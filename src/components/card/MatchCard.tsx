@@ -14,6 +14,7 @@ const STATUS_LABEL: Record<string, string> = {
   AWAITING_PLAYERS: "Aguardando jogadores",
   SCHEDULED: "Confirmada",
   FINISHED: "Finalizada",
+  CANCELLED: "Cancelada",
 };
 
 export function MatchCard({ match, myId, onJoin }: MatchCardProps) {

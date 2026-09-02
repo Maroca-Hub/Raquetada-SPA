@@ -23,6 +23,7 @@ const STATUS_LABEL: Record<string, string> = {
   AWAITING_PLAYERS: "Aguardando jogadores",
   SCHEDULED: "Confirmada",
   FINISHED: "Finalizada",
+  CANCELLED: "Cancelada",
 };
 
 const COLUMNS_BOTTOM: PadelPosition[] = ["REVES", "DRIVE"];
@@ -32,6 +33,12 @@ const columnsForTeam = (team: number) =>
 const POSITION_SHORT: Record<PadelPosition, string> = {
   DRIVE: "Drive",
   REVES: "Revés",
+};
+
+const DANGER_BUTTON: React.CSSProperties = {
+  backgroundColor: "var(--error-container)",
+  color: "var(--error)",
+  boxShadow: "none",
 };
 
 export function MatchDetail() {
@@ -45,6 +52,7 @@ export function MatchDetail() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -146,6 +154,8 @@ export function MatchDetail() {
   const isConfirmed = roster.some((p) => p.player.id === myId);
   const isFull = roster.length >= 4;
   const isFinished = match.status === "FINISHED";
+  const isCancelled = match.status === "CANCELLED";
+  const canCancel = isOrganizer && !isFinished && !isCancelled;
   const slotOf = (team: number, position: PadelPosition) =>
     roster.find((p) => p.team === team && p.position === position);
 
@@ -175,6 +185,18 @@ export function MatchDetail() {
       await loadData();
     } catch (err) {
       setToastMessage((err as Error).message);
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      await api.matches.cancel(matchId);
+      setToastMessage("Partida cancelada.");
+      await loadData();
+    } catch (err) {
+      setToastMessage((err as Error).message);
+    } finally {
+      setConfirmingCancel(false);
     }
   };
 
@@ -430,7 +452,7 @@ export function MatchDetail() {
 
         {/* Action */}
         <section>
-          {isConfirmed && !isOrganizer && !isFinished ? (
+          {isConfirmed && !isOrganizer && !isFinished && !isCancelled ? (
             <button
               type="button"
               onClick={handleLeave}
@@ -489,12 +511,133 @@ export function MatchDetail() {
             />
           </LockedUntilStart>
         )}
+
+        {canCancel && (
+          <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setConfirmingCancel(true)}
+              className="btn-primary"
+              style={{ width: "100%", ...DANGER_BUTTON }}
+            >
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: "18px" }}
+              >
+                cancel
+              </span>
+              Cancelar partida
+            </button>
+          </section>
+        )}
       </div>
+
+      {confirmingCancel && (
+        <CancelMatchModal
+          onConfirm={handleCancel}
+          onClose={() => setConfirmingCancel(false)}
+        />
+      )}
 
       {toastMessage && (
         <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
       )}
     </Layout>
+  );
+}
+
+function CancelMatchModal({
+  onConfirm,
+  onClose,
+}: {
+  onConfirm: () => Promise<void>;
+  onClose: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+
+  const run = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        backgroundColor: "rgba(0, 0, 0, 0.85)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px",
+      }}
+      onClick={() => !submitting && onClose()}
+    >
+      <div
+        className="glass-panel"
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          borderRadius: "24px",
+          padding: "24px",
+          backgroundColor: "rgba(19, 19, 19, 0.97)",
+          border: "1px solid var(--border-subtle)",
+          boxShadow: "0 25px 60px rgba(0, 0, 0, 0.9)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2
+          className="font-display"
+          style={{
+            fontSize: "20px",
+            fontWeight: 800,
+            color: "var(--on-surface)",
+            marginBottom: 8,
+          }}
+        >
+          Cancelar partida
+        </h2>
+        <p
+          style={{
+            fontSize: "14px",
+            color: "var(--on-surface-variant)",
+            lineHeight: 1.5,
+          }}
+        >
+          Tem certeza que deseja cancelar esta partida? Esta ação não pode ser
+          desfeita.
+        </p>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="btn-secondary"
+            style={{ flex: 1 }}
+          >
+            Voltar
+          </button>
+          <button
+            type="button"
+            onClick={run}
+            disabled={submitting}
+            className="btn-primary"
+            style={{ flex: 1, ...DANGER_BUTTON }}
+          >
+            {submitting ? "Cancelando..." : "Confirmar cancelamento"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -966,7 +1109,11 @@ function EvaluationPanel({
     >
       <h2
         className="font-display"
-        style={{ fontSize: "17px", fontWeight: 800, color: "var(--on-surface)" }}
+        style={{
+          fontSize: "17px",
+          fontWeight: 800,
+          color: "var(--on-surface)",
+        }}
       >
         Avaliações da partida
       </h2>
@@ -982,7 +1129,10 @@ function EvaluationPanel({
             color: "var(--primary-fixed)",
           }}
         >
-          <span className="material-symbols-outlined filled" style={{ fontSize: "22px" }}>
+          <span
+            className="material-symbols-outlined filled"
+            style={{ fontSize: "22px" }}
+          >
             check_circle
           </span>
           Você já avaliou todos os jogadores desta partida.
@@ -1144,7 +1294,10 @@ function EvaluationModal({
               flexShrink: 0,
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "18px" }}
+            >
               close
             </span>
           </button>
@@ -1220,8 +1373,7 @@ function StarRating({
   return (
     <div style={{ display: "flex", gap: 2 }}>
       {[1, 2, 3, 4, 5].map((i) => {
-        const kind =
-          value >= i ? "full" : value >= i - 0.5 ? "half" : "empty";
+        const kind = value >= i ? "full" : value >= i - 0.5 ? "half" : "empty";
         return (
           <div key={i} style={{ position: "relative", width: 30, height: 30 }}>
             <span
@@ -1232,9 +1384,7 @@ function StarRating({
                 fontSize: "30px",
                 pointerEvents: "none",
                 color:
-                  kind === "empty"
-                    ? "var(--outline)"
-                    : "var(--primary-fixed)",
+                  kind === "empty" ? "var(--outline)" : "var(--primary-fixed)",
               }}
             >
               {kind === "half" ? "star_half" : "star"}

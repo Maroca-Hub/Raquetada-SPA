@@ -173,7 +173,9 @@ export function Matches() {
           </button>
         </section>
 
-        <section style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <section
+          style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+        >
           {loading ? (
             <div
               style={{
@@ -184,7 +186,10 @@ export function Matches() {
             >
               <span
                 className="material-symbols-outlined"
-                style={{ fontSize: "32px", animation: "spin 1s linear infinite" }}
+                style={{
+                  fontSize: "32px",
+                  animation: "spin 1s linear infinite",
+                }}
               >
                 sports_tennis
               </span>
@@ -245,25 +250,6 @@ export function Matches() {
               <p style={{ fontWeight: 600, color: "var(--on-surface)" }}>
                 Nenhuma partida para este filtro.
               </p>
-              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedFilter("ALL");
-                    setOnlyMine(false);
-                  }}
-                  className="btn-secondary"
-                >
-                  Ver todas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateModalOpen(true)}
-                  className="btn-primary"
-                >
-                  Criar uma agora
-                </button>
-              </div>
             </div>
           ) : (
             <>

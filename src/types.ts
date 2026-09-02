@@ -4,7 +4,11 @@
 // Nothing here is fabricated; every field is returned/accepted by an endpoint.
 // ----------------------------------------------------
 
-export type MatchStatus = "AWAITING_PLAYERS" | "SCHEDULED" | "FINISHED";
+export type MatchStatus =
+  | "AWAITING_PLAYERS"
+  | "SCHEDULED"
+  | "FINISHED"
+  | "CANCELLED";
 
 export type PadelPosition = "DRIVE" | "REVES";
 
