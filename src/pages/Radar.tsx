@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { InfiniteScrollSentinel } from "../components/common/InfiniteScrollSentinel";
+import { ShareAppBanner } from "../components/common/ShareAppBanner";
 import { useApi } from "../hooks/useApi";
 import { usePaginatedList } from "../hooks/usePaginatedList";
 import type { PlayerOutput, PlayerSort } from "../types";
@@ -33,6 +34,8 @@ export function Radar() {
   return (
     <Layout title="Radar">
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <ShareAppBanner />
+
         <div
           style={{
             display: "flex",
