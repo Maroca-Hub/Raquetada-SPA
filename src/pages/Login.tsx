@@ -89,7 +89,8 @@ export function Login() {
               fontWeight: 500,
             }}
           >
-            Partidas de Padel, Rankings Gamificados e Estatísticas
+            Ranking da comunidade de padel, com evolução do seu perfil e
+            fundamentos.
           </p>
         </div>
 
@@ -110,7 +111,7 @@ export function Login() {
             style={{ width: "100%", padding: "14px", fontSize: "15px" }}
           >
             <span className="material-symbols-outlined filled">login</span>
-            Entrar na Conta
+            Entrar
           </button>
 
           {/* Dev-only Mock Login option */}
@@ -126,42 +127,16 @@ export function Login() {
                 gap: 8,
               }}
             >
-              <span
-                style={{
-                  fontSize: "11px",
-                  color: "var(--primary-fixed)",
-                  fontWeight: 800,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.06em",
-                }}
-              >
-                🛠️ Modo Desenvolvimento
-              </span>
               <button
                 type="button"
                 onClick={handleDevLogin}
                 className="btn-secondary"
-                style={{ width: "100%", padding: "10px", fontSize: "13px" }}
+                style={{ width: "100%", padding: "20px", fontSize: "13px" }}
               >
-                <span className="material-symbols-outlined">play_circle</span>
-                Entrar em modo dev (sem Keycloak)
+                Entrar com conta de testes
               </button>
             </div>
           )}
-        </div>
-
-        <div
-          style={{
-            borderTop: "1px solid var(--border-subtle)",
-            paddingTop: 16,
-            width: "100%",
-          }}
-        >
-          <span
-            style={{ fontSize: "11px", color: "var(--on-surface-variant)" }}
-          >
-            ⚡ Performance Dark • Padel Match Evolution
-          </span>
         </div>
       </div>
     </div>
