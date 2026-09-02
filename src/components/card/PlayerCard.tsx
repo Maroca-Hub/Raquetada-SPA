@@ -20,7 +20,13 @@ export function PlayerCard({
     <div className="player-card-fut" style={{ padding: 24 }}>
       <div
         className="glow-ambient"
-        style={{ width: 140, height: 140, background: "rgba(210, 240, 0, 0.15)", top: -20, right: -20 }}
+        style={{
+          width: 140,
+          height: 140,
+          background: "rgba(210, 240, 0, 0.15)",
+          top: -20,
+          right: -20,
+        }}
       />
 
       {/* Top bar: total rating + form indicator */}
@@ -57,7 +63,7 @@ export function PlayerCard({
                 textTransform: "uppercase",
               }}
             >
-              Rating
+              Geral
             </span>
           </div>
 
@@ -109,14 +115,22 @@ export function PlayerCard({
             color: "var(--primary-fixed)",
           }}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: "52px" }}>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: "52px" }}
+          >
             person
           </span>
         </div>
 
         <h2
           className="font-display"
-          style={{ fontSize: "22px", fontWeight: 800, color: "var(--on-surface)", letterSpacing: "-0.01em" }}
+          style={{
+            fontSize: "22px",
+            fontWeight: 800,
+            color: "var(--on-surface)",
+            letterSpacing: "-0.01em",
+          }}
         >
           {profile.name}
         </h2>
@@ -183,7 +197,13 @@ export function PlayerCard({
           type="button"
           onClick={onAction}
           className="btn-primary"
-          style={{ width: "100%", marginTop: 16, position: "relative", zIndex: 2, borderRadius: "var(--radius-full)" }}
+          style={{
+            width: "100%",
+            marginTop: 16,
+            position: "relative",
+            zIndex: 2,
+            borderRadius: "var(--radius-full)",
+          }}
         >
           {actionText}
         </button>
@@ -198,13 +218,25 @@ function FormIndicator({ bonus }: { bonus: number }) {
   const color = up ? "#3fd07a" : "var(--error)";
   return (
     <span
-      style={{ display: "inline-flex", alignItems: "center", gap: 2, color, lineHeight: 1 }}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 2,
+        color,
+        lineHeight: 1,
+      }}
       title={up ? "Boa fase" : "Má fase"}
     >
-      <span className="material-symbols-outlined filled" style={{ fontSize: "30px" }}>
+      <span
+        className="material-symbols-outlined filled"
+        style={{ fontSize: "30px" }}
+      >
         {up ? "keyboard_double_arrow_up" : "keyboard_double_arrow_down"}
       </span>
-      <span className="font-display" style={{ fontSize: "18px", fontWeight: 900 }}>
+      <span
+        className="font-display"
+        style={{ fontSize: "18px", fontWeight: 900 }}
+      >
         {up ? `+${bonus}` : bonus}
       </span>
     </span>
@@ -213,15 +245,27 @@ function FormIndicator({ bonus }: { bonus: number }) {
 
 function RatingPill({ label, value }: { label: string; value: number }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+    <div
+      style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
+    >
       <span
         className="font-display"
-        style={{ fontSize: "18px", fontWeight: 900, color: "var(--on-surface)", lineHeight: 1 }}
+        style={{
+          fontSize: "18px",
+          fontWeight: 900,
+          color: "var(--on-surface)",
+          lineHeight: 1,
+        }}
       >
         {value}
       </span>
       <span
-        style={{ fontSize: "10px", color: "var(--on-surface-variant)", textTransform: "uppercase", fontWeight: 700 }}
+        style={{
+          fontSize: "10px",
+          color: "var(--on-surface-variant)",
+          textTransform: "uppercase",
+          fontWeight: 700,
+        }}
       >
         {label}
       </span>
@@ -245,7 +289,12 @@ function SkillItem({ label, value }: { label: string; value?: number }) {
         }}
       >
         <span style={{ color: "var(--on-surface)" }}>{label}</span>
-        <span style={{ color: "var(--primary-fixed)", fontFamily: "var(--font-display)" }}>
+        <span
+          style={{
+            color: "var(--primary-fixed)",
+            fontFamily: "var(--font-display)",
+          }}
+        >
           {has ? scaled : "—"}
         </span>
       </div>

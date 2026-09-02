@@ -24,7 +24,10 @@ const STATUS_LABEL: Record<string, string> = {
   FINISHED: "Finalizada",
 };
 
-const COLUMNS: PadelPosition[] = ["REVES", "DRIVE"];
+const COLUMNS_BOTTOM: PadelPosition[] = ["REVES", "DRIVE"];
+const COLUMNS_TOP: PadelPosition[] = ["DRIVE", "REVES"];
+const columnsForTeam = (team: number) =>
+  team === 1 ? COLUMNS_TOP : COLUMNS_BOTTOM;
 const POSITION_SHORT: Record<PadelPosition, string> = {
   DRIVE: "Drive",
   REVES: "Revés",
@@ -481,7 +484,7 @@ function CourtLineup({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <PositionHeaders />
+      <PositionHeaders columns={COLUMNS_TOP} />
 
       <div
         style={{
@@ -495,13 +498,13 @@ function CourtLineup({
         }}
       >
         {[1, 2].map((team) =>
-          COLUMNS.map((position) => (
+          columnsForTeam(team).map((position, colIndex) => (
             <CourtCell
               key={`${team}-${position}`}
               part={slotOf(team, position)}
               isMe={slotOf(team, position)?.player.id === myId}
               isTopRow={team === 1}
-              isLeftCol={position === "REVES"}
+              isLeftCol={colIndex === 0}
               clickable={canPickSlot(team, position)}
               onClick={() => onPickSlot(team, position)}
             />
@@ -509,15 +512,15 @@ function CourtLineup({
         )}
       </div>
 
-      <PositionHeaders />
+      <PositionHeaders columns={COLUMNS_BOTTOM} />
     </div>
   );
 }
 
-function PositionHeaders() {
+function PositionHeaders({ columns }: { columns: PadelPosition[] }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-      {COLUMNS.map((position) => (
+      {columns.map((position) => (
         <div
           key={position}
           style={{ display: "flex", justifyContent: "center" }}

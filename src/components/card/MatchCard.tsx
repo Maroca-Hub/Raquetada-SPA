@@ -25,7 +25,11 @@ export function MatchCard({ match, roster, myId, onJoin }: MatchCardProps) {
   const isOrganizer = match.organizer.id === myId;
   const isConfirmed = roster.some((p) => p.player.id === myId);
   const isFull = confirmedCount >= MATCH_CAPACITY;
-  const canJoin = !isOrganizer && !isConfirmed && !isFull && match.status === "AWAITING_PLAYERS";
+  const canJoin =
+    !isOrganizer &&
+    !isConfirmed &&
+    !isFull &&
+    match.status === "AWAITING_PLAYERS";
 
   const goToDetail = () => navigate(`/matches/${match.id}`);
 
@@ -49,11 +53,23 @@ export function MatchCard({ match, roster, myId, onJoin }: MatchCardProps) {
         transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 12,
+        }}
+      >
         <div>
           <h3
             className="font-display"
-            style={{ fontSize: "18px", fontWeight: 800, color: "var(--on-surface)", marginBottom: 4 }}
+            style={{
+              fontSize: "18px",
+              fontWeight: 800,
+              color: "var(--on-surface)",
+              marginBottom: 4,
+            }}
           >
             {match.location}
           </h3>
@@ -67,7 +83,10 @@ export function MatchCard({ match, roster, myId, onJoin }: MatchCardProps) {
               fontWeight: 500,
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "16px" }}
+            >
               calendar_today
             </span>
             <span>{formatMatchDateTime(match.dateTime)}</span>
@@ -97,7 +116,7 @@ export function MatchCard({ match, roster, myId, onJoin }: MatchCardProps) {
           {roster.map((part, index) => (
             <div
               key={part.id}
-              title={`${part.player.name} · OVR ${part.player.rating}`}
+              title={`${part.player.name} · GRL ${part.player.rating}`}
               style={{
                 width: 38,
                 height: 38,
@@ -135,7 +154,10 @@ export function MatchCard({ match, roster, myId, onJoin }: MatchCardProps) {
                 zIndex: 10 - index,
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+              <span
+                className="material-symbols-outlined"
+                style={{ fontSize: "16px" }}
+              >
                 add
               </span>
             </div>
@@ -156,7 +178,10 @@ export function MatchCard({ match, roster, myId, onJoin }: MatchCardProps) {
               color: "var(--primary-fixed)",
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "18px" }}
+            >
               admin_panel_settings
             </span>
             Gerenciar partida
@@ -166,9 +191,16 @@ export function MatchCard({ match, roster, myId, onJoin }: MatchCardProps) {
             type="button"
             onClick={handleAction}
             className="btn-secondary"
-            style={{ width: "100%", color: "var(--primary-fixed)", borderColor: "rgba(210, 240, 0, 0.3)" }}
+            style={{
+              width: "100%",
+              color: "var(--primary-fixed)",
+              borderColor: "rgba(210, 240, 0, 0.3)",
+            }}
           >
-            <span className="material-symbols-outlined filled" style={{ fontSize: "18px" }}>
+            <span
+              className="material-symbols-outlined filled"
+              style={{ fontSize: "18px" }}
+            >
               check_circle
             </span>
             Você está confirmado · Ver detalhes
@@ -183,7 +215,12 @@ export function MatchCard({ match, roster, myId, onJoin }: MatchCardProps) {
             {isFull ? "Partida cheia" : "Ver detalhes"}
           </button>
         ) : (
-          <button type="button" onClick={handleAction} className="btn-primary" style={{ width: "100%" }}>
+          <button
+            type="button"
+            onClick={handleAction}
+            className="btn-primary"
+            style={{ width: "100%" }}
+          >
             Entrar na partida
           </button>
         )}

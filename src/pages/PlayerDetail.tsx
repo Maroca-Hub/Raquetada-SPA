@@ -43,7 +43,13 @@ export function PlayerDetail() {
   if (loading) {
     return (
       <Layout showBack title="Carregando...">
-        <div style={{ textAlign: "center", padding: "40px", color: "var(--primary-fixed)" }}>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "40px",
+            color: "var(--primary-fixed)",
+          }}
+        >
           <span
             className="material-symbols-outlined"
             style={{ fontSize: "32px", animation: "spin 1s linear infinite" }}
@@ -58,9 +64,29 @@ export function PlayerDetail() {
   if (!profile) {
     return (
       <Layout showBack title="Jogador não encontrado">
-        <div className="glass-panel" style={{ borderRadius: "16px", padding: "28px 20px", textAlign: "center", color: "var(--error)" }}>
-          <p style={{ fontWeight: 600 }}>Não foi possível carregar este jogador.</p>
-          {error && <p style={{ fontSize: "12px", color: "var(--on-surface-variant)", marginTop: 4 }}>{error}</p>}
+        <div
+          className="glass-panel"
+          style={{
+            borderRadius: "16px",
+            padding: "28px 20px",
+            textAlign: "center",
+            color: "var(--error)",
+          }}
+        >
+          <p style={{ fontWeight: 600 }}>
+            Não foi possível carregar este jogador.
+          </p>
+          {error && (
+            <p
+              style={{
+                fontSize: "12px",
+                color: "var(--on-surface-variant)",
+                marginTop: 4,
+              }}
+            >
+              {error}
+            </p>
+          )}
         </div>
       </Layout>
     );
@@ -75,15 +101,30 @@ export function PlayerDetail() {
 
         <section
           className="glass-panel animate-fade-in"
-          style={{ borderRadius: "16px", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}
+          style={{
+            borderRadius: "16px",
+            padding: "18px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-            <span style={{ color: "var(--on-surface-variant)" }}>Avaliações recebidas</span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "13px",
+            }}
+          >
+            <span style={{ color: "var(--on-surface-variant)" }}>
+              Avaliações recebidas
+            </span>
             <span style={{ fontWeight: 700 }}>{evaluationCount ?? "—"}</span>
           </div>
           {!isRatingReliable(profile.reliability) && (
             <p style={{ fontSize: "12px", color: "var(--on-surface-variant)" }}>
-              Este jogador ainda tem poucas partidas recentes, então o rating pode não refletir bem o nível atual.
+              Este jogador tem poucas partidas recentes, então o geral pode não
+              refletir bem o nível atual.
             </p>
           )}
         </section>

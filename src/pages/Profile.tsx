@@ -60,14 +60,22 @@ export function Profile() {
   if (loading) {
     return (
       <Layout title="Meu perfil">
-        <div style={{ textAlign: "center", padding: "40px", color: "var(--primary-fixed)" }}>
+        <div
+          style={{
+            textAlign: "center",
+            padding: "40px",
+            color: "var(--primary-fixed)",
+          }}
+        >
           <span
             className="material-symbols-outlined"
             style={{ fontSize: "32px", animation: "spin 1s linear infinite" }}
           >
             sports_tennis
           </span>
-          <p style={{ marginTop: 8, fontSize: "13px", fontWeight: 600 }}>Carregando perfil...</p>
+          <p style={{ marginTop: 8, fontSize: "13px", fontWeight: 600 }}>
+            Carregando perfil...
+          </p>
         </div>
       </Layout>
     );
@@ -76,10 +84,35 @@ export function Profile() {
   if (!profile) {
     return (
       <Layout title="Meu perfil">
-        <div className="glass-panel" style={{ borderRadius: "16px", padding: "28px 20px", textAlign: "center", color: "var(--error)" }}>
-          <p style={{ fontWeight: 600 }}>Não foi possível carregar seu perfil.</p>
-          {error && <p style={{ fontSize: "12px", color: "var(--on-surface-variant)", marginTop: 4 }}>{error}</p>}
-          <button type="button" onClick={loadProfile} className="btn-secondary" style={{ marginTop: 12 }}>
+        <div
+          className="glass-panel"
+          style={{
+            borderRadius: "16px",
+            padding: "28px 20px",
+            textAlign: "center",
+            color: "var(--error)",
+          }}
+        >
+          <p style={{ fontWeight: 600 }}>
+            Não foi possível carregar seu perfil.
+          </p>
+          {error && (
+            <p
+              style={{
+                fontSize: "12px",
+                color: "var(--on-surface-variant)",
+                marginTop: 4,
+              }}
+            >
+              {error}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={loadProfile}
+            className="btn-secondary"
+            style={{ marginTop: 12 }}
+          >
             Tentar novamente
           </button>
         </div>
@@ -96,16 +129,31 @@ export function Profile() {
 
         <section
           className="glass-panel animate-fade-in"
-          style={{ borderRadius: "16px", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}
+          style={{
+            borderRadius: "16px",
+            padding: "18px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+          }}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-            <span style={{ color: "var(--on-surface-variant)" }}>Avaliações recebidas</span>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              fontSize: "13px",
+            }}
+          >
+            <span style={{ color: "var(--on-surface-variant)" }}>
+              Avaliações recebidas
+            </span>
             <span style={{ fontWeight: 700 }}>{evaluationCount ?? "—"}</span>
           </div>
           {!isRatingReliable(profile.reliability) && (
             <p style={{ fontSize: "12px", color: "var(--on-surface-variant)" }}>
-              Você ainda tem poucas partidas recentes, então seu rating pode não refletir bem o seu nível atual.
-              Jogue e receba mais avaliações para consolidá-lo.
+              Você tem poucas partidas recentes, então seu rating pode não
+              refletir bem o seu nível atual. Jogue e receba mais avaliações
+              para consolidá-lo.
             </p>
           )}
         </section>
@@ -125,7 +173,10 @@ export function Profile() {
             className="btn-primary"
             style={{ width: "100%", borderRadius: "var(--radius-md)" }}
           >
-            <span className="material-symbols-outlined filled" style={{ fontSize: "18px" }}>
+            <span
+              className="material-symbols-outlined filled"
+              style={{ fontSize: "18px" }}
+            >
               edit
             </span>
             Editar meu nome
@@ -135,17 +186,28 @@ export function Profile() {
             type="button"
             onClick={handleSignOut}
             className="btn-secondary"
-            style={{ width: "100%", color: "var(--error)", borderColor: "rgba(255, 180, 171, 0.2)" }}
+            style={{
+              width: "100%",
+              color: "var(--error)",
+              borderColor: "rgba(255, 180, 171, 0.2)",
+            }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "18px" }}
+            >
               logout
             </span>
-            {isDevSession() && !auth.isAuthenticated ? "Sair do modo dev" : "Sair da conta"}
+            {isDevSession() && !auth.isAuthenticated
+              ? "Sair do modo dev"
+              : "Sair da conta"}
           </button>
         </section>
       </div>
 
-      {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
+      {toastMessage && (
+        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+      )}
     </Layout>
   );
 }
