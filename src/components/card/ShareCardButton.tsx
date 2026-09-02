@@ -26,11 +26,12 @@ export function ShareCardButton({ profile }: { profile: PlayerProfileOutput }) {
     setBusy(true);
     try {
       const result = await shareNodeAsImage(exportRef.current, {
-        fileName: `card-raquetada-${slugify(profile.name)}.png`,
-        title: `${profile.name} · Raquetada`,
-        text: `Meu card na Raquetada — GERAL ${profile.currentRating}`,
+        fileName: `card-lob-${slugify(profile.name)}.png`,
+        title: `${profile.name} · Lob`,
+        text: `Meu card na Lob — GERAL ${profile.currentRating}`,
       });
-      if (result === "downloaded") setToast("Imagem do card salva no dispositivo.");
+      if (result === "downloaded")
+        setToast("Imagem do card salva no dispositivo.");
     } catch (err) {
       setToast(`Não foi possível gerar a imagem (${(err as Error).message}).`);
     } finally {
@@ -47,7 +48,10 @@ export function ShareCardButton({ profile }: { profile: PlayerProfileOutput }) {
         className="btn-primary"
         style={{ width: "100%", borderRadius: "var(--radius-md)" }}
       >
-        <span className="material-symbols-outlined filled" style={{ fontSize: "18px" }}>
+        <span
+          className="material-symbols-outlined filled"
+          style={{ fontSize: "18px" }}
+        >
           share
         </span>
         {busy ? "Gerando imagem..." : "Compartilhar meu card"}
@@ -56,7 +60,12 @@ export function ShareCardButton({ profile }: { profile: PlayerProfileOutput }) {
       {/* Off-screen, fixed-width render used only as the capture source. */}
       <div
         aria-hidden
-        style={{ position: "fixed", left: "-10000px", top: 0, pointerEvents: "none" }}
+        style={{
+          position: "fixed",
+          left: "-10000px",
+          top: 0,
+          pointerEvents: "none",
+        }}
       >
         <div
           ref={exportRef}
@@ -81,7 +90,7 @@ export function ShareCardButton({ profile }: { profile: PlayerProfileOutput }) {
               fontFamily: "var(--font-display)",
             }}
           >
-            Raquetada
+            Lob
           </div>
         </div>
       </div>

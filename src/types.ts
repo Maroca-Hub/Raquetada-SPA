@@ -1,5 +1,5 @@
 // ----------------------------------------------------
-// V1 API contract types — mirror the Raquetada API exactly.
+// V1 API contract types — mirror the Lob API exactly.
 // Source of truth: GET http://localhost:8080/v3/api-docs
 // Nothing here is fabricated; every field is returned/accepted by an endpoint.
 // ----------------------------------------------------

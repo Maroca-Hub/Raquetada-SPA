@@ -72,7 +72,7 @@ export function Onboarding() {
               letterSpacing: "0.1em",
             }}
           >
-            Bem-vindo à Raquetada
+            Bem-vindo ao Lob
           </span>
           <h1
             className="font-display"

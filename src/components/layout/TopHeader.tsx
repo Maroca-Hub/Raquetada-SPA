@@ -47,7 +47,12 @@ export function TopHeader({ title, showBack }: TopHeaderProps) {
               transition: "all 0.2s",
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>arrow_back</span>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "20px" }}
+            >
+              arrow_back
+            </span>
           </button>
         ) : (
           <Link
@@ -78,8 +83,8 @@ export function TopHeader({ title, showBack }: TopHeaderProps) {
                 sports_tennis
               </span>
             </div>
-            <span className="title-raquetada" style={{ fontSize: "20px" }}>
-              RAQUETADA
+            <span className="title-lob" style={{ fontSize: "20px" }}>
+              LOB
             </span>
           </Link>
         )}
@@ -116,7 +121,10 @@ export function TopHeader({ title, showBack }: TopHeaderProps) {
           }}
           title="Meu Perfil"
         >
-          <span className="material-symbols-outlined filled" style={{ fontSize: "20px" }}>
+          <span
+            className="material-symbols-outlined filled"
+            style={{ fontSize: "20px" }}
+          >
             person
           </span>
         </Link>

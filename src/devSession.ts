@@ -3,7 +3,7 @@
 // `X-User` (defaults to `ana.souza`). No mocked data — all responses come
 // from the real API and its dev seeder.
 
-const KEY = "raquetada_dev_session";
+const KEY = "lob_dev_session";
 
 export const DEV_USER = "ana.souza";
 

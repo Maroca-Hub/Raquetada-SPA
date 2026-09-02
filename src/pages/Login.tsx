@@ -30,7 +30,8 @@ export function Login() {
         alignItems: "center",
         justifyContent: "center",
         padding: "24px 16px",
-        background: "radial-gradient(circle at 50% 30%, #1f2a10 0%, #0e0e0e 70%)",
+        background:
+          "radial-gradient(circle at 50% 30%, #1f2a10 0%, #0e0e0e 70%)",
         position: "relative",
       }}
     >
@@ -74,8 +75,11 @@ export function Login() {
         </div>
 
         <div>
-          <h1 className="title-raquetada" style={{ fontSize: "32px", lineHeight: 1.1 }}>
-            RAQUETADA
+          <h1
+            className="title-lob"
+            style={{ fontSize: "32px", lineHeight: 1.1 }}
+          >
+            LOB
           </h1>
           <p
             style={{
@@ -89,7 +93,15 @@ export function Login() {
           </p>
         </div>
 
-        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px", marginTop: 8 }}>
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            marginTop: 8,
+          }}
+        >
           {/* Main Production Login Button */}
           <button
             type="button"
@@ -138,8 +150,16 @@ export function Login() {
           )}
         </div>
 
-        <div style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 16, width: "100%" }}>
-          <span style={{ fontSize: "11px", color: "var(--on-surface-variant)" }}>
+        <div
+          style={{
+            borderTop: "1px solid var(--border-subtle)",
+            paddingTop: 16,
+            width: "100%",
+          }}
+        >
+          <span
+            style={{ fontSize: "11px", color: "var(--on-surface-variant)" }}
+          >
             ⚡ Performance Dark • Padel Match Evolution
           </span>
         </div>
