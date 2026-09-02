@@ -10,8 +10,14 @@ export function Login() {
     return <Navigate to="/" replace />;
   }
 
-  const handleDevLogin = () => {
+  const handleDevLogin = async () => {
     enableDevSession();
+    // Drop any stale OIDC session so the app can't fall back to that identity.
+    try {
+      await auth.removeUser();
+    } catch {
+      // ignore — nothing to clear
+    }
     navigate("/");
   };
 

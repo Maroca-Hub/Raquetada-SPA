@@ -36,11 +36,13 @@ export function createApi(getToken: () => string | undefined) {
       ...(init?.headers as Record<string, string> | undefined),
     };
 
-    if (token) {
-      headers.Authorization = `Bearer ${token}`;
-    } else if (isDevSession()) {
-      // The API's `development` profile reads this header instead of a JWT.
+    if (isDevSession()) {
+      // Dev mode wins even if a stale OIDC token is still around, so the app
+      // always acts as the dev seed user. The API's `development` profile reads
+      // this header instead of a JWT.
       headers["X-User"] = DEV_USER;
+    } else if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
 
     const response = await fetch(`${baseUrl}${path}`, { ...init, headers });
