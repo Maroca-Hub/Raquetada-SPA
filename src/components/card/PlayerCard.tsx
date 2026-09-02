@@ -12,6 +12,9 @@ interface PlayerCardProps {
   showAction?: boolean;
   actionText?: string;
   onAction?: () => void;
+  /** Rendered as the source for the shareable image — avoids CSS the
+   *  rasterizer can't reproduce (blur filters, reflowable text). */
+  forExport?: boolean;
 }
 
 export function PlayerCard({
@@ -21,18 +24,35 @@ export function PlayerCard({
   showAction = false,
   actionText = "AÇÃO",
   onAction,
+  forExport = false,
 }: PlayerCardProps) {
   return (
     <div className="player-card-fut" style={{ padding: 24 }}>
       <div
-        className="glow-ambient"
-        style={{
-          width: 140,
-          height: 140,
-          background: "rgba(210, 240, 0, 0.15)",
-          top: -20,
-          right: -20,
-        }}
+        className={forExport ? undefined : "glow-ambient"}
+        style={
+          forExport
+            ? {
+                // A radial gradient rasterizes identically to the blurred
+                // circle html-to-image mangles, and stays inside the card.
+                position: "absolute",
+                width: 200,
+                height: 200,
+                top: -50,
+                right: -50,
+                borderRadius: "50%",
+                background:
+                  "radial-gradient(circle, rgba(210, 240, 0, 0.18), rgba(210, 240, 0, 0) 70%)",
+                pointerEvents: "none",
+              }
+            : {
+                width: 140,
+                height: 140,
+                background: "rgba(210, 240, 0, 0.15)",
+                top: -20,
+                right: -20,
+              }
+        }
       />
 
       {/* Top bar: total rating + form indicator */}
@@ -138,6 +158,9 @@ export function PlayerCard({
             textTransform: "uppercase",
             letterSpacing: "0.06em",
             marginTop: 4,
+            // Keep on one line in the export: html-to-image measures the box
+            // before the webfont settles, so a late wrap overlaps the row below.
+            whiteSpace: forExport ? "nowrap" : undefined,
           }}
         >
           Lado: {POSITION_LABELS[profile.mainPosition] ?? profile.mainPosition}

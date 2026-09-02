@@ -33,7 +33,6 @@ export function Avatar({
         width: size,
         height: size,
         borderRadius: "50%",
-        overflow: "hidden",
         flexShrink: 0,
         display: "flex",
         alignItems: "center",
@@ -42,6 +41,7 @@ export function Avatar({
         fontFamily: "var(--font-display)",
         fontWeight: 900,
         fontSize: Math.round(size * 0.42),
+        lineHeight: 1,
         color: letterColor,
         ...style,
       }}
@@ -52,10 +52,18 @@ export function Avatar({
           alt={name}
           crossOrigin="anonymous"
           onError={() => setFailed(true)}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          // Clip the photo on the <img> itself rather than with `overflow:
+          // hidden` on the wrapper — the latter makes html-to-image bail
+          // mid-render, dropping the card's gradient/glow in exports.
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            borderRadius: "50%",
+          }}
         />
       ) : (
-        (name.trim().charAt(0) || "?").toUpperCase()
+        <span>{(name.trim().charAt(0) || "?").toUpperCase()}</span>
       )}
     </div>
   );

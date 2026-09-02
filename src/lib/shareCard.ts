@@ -9,12 +9,21 @@ export async function shareNodeAsImage(
   node: HTMLElement,
   opts: { fileName: string; title?: string; text?: string; url?: string },
 ): Promise<"shared" | "downloaded"> {
-  // Web fonts (Montserrat, Material Symbols) must be loaded before capture,
-  // otherwise the first render drops glyphs.
+  // The webfonts the card uses must be fully downloaded before capture:
+  // `fonts.ready` alone doesn't fetch a face that nothing has requested yet,
+  // and a late-arriving font reflows the clone after html-to-image has
+  // measured it (text wraps and overlaps the row below).
   try {
+    await Promise.all([
+      document.fonts?.load('900 44px "Montserrat"'),
+      document.fonts?.load('800 22px "Montserrat"'),
+      document.fonts?.load('700 12px "Inter"'),
+      document.fonts?.load('400 12px "Inter"'),
+      document.fonts?.load('24px "Material Symbols Outlined"'),
+    ]);
     await document.fonts?.ready;
   } catch {
-    /* ignore */
+    /* best effort — capture proceeds with whatever is loaded */
   }
 
   // html-to-image chokes on cross-origin <img> it can't inline (the player

@@ -80,7 +80,12 @@ export function ShareCardButton({ profile }: { profile: PlayerProfileOutput }) {
             gap: 14,
           }}
         >
-          <PlayerCard profile={profile} showProgress={false} showSkillsRow />
+          <PlayerCard
+            profile={profile}
+            showProgress={false}
+            showSkillsRow
+            forExport
+          />
           <div
             style={{
               textAlign: "center",
