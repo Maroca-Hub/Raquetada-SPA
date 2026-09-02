@@ -5,6 +5,7 @@ import { Layout } from "../components/layout/Layout";
 import { PlayerCard } from "../components/card/PlayerCard";
 import { Toast } from "../components/common/Toast";
 import { useApi } from "../hooks/useApi";
+import { isRatingReliable } from "../services/api";
 import { clearDevSession, isDevSession } from "../devSession";
 import type { PlayerProfileOutput } from "../types";
 
@@ -97,20 +98,14 @@ export function Profile() {
           className="glass-panel animate-fade-in"
           style={{ borderRadius: "16px", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}
         >
-          <h2 className="font-display" style={{ fontSize: "16px", fontWeight: 800, color: "var(--on-surface)" }}>
-            Confiabilidade do rating
-          </h2>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-            <span style={{ color: "var(--on-surface-variant)" }}>Índice de confiabilidade</span>
-            <span style={{ fontWeight: 700 }}>{(profile.reliability * 100).toFixed(0)}%</span>
-          </div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
             <span style={{ color: "var(--on-surface-variant)" }}>Avaliações recebidas</span>
             <span style={{ fontWeight: 700 }}>{evaluationCount ?? "—"}</span>
           </div>
-          {profile.provisional && (
+          {!isRatingReliable(profile.reliability) && (
             <p style={{ fontSize: "12px", color: "var(--on-surface-variant)" }}>
-              Seu rating ainda é provisório — jogue e receba mais avaliações para consolidá-lo.
+              Você ainda tem poucas partidas recentes, então seu rating pode não refletir bem o seu nível atual.
+              Jogue e receba mais avaliações para consolidá-lo.
             </p>
           )}
         </section>

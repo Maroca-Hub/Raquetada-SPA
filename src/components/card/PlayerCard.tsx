@@ -1,5 +1,5 @@
 import type { PlayerProfileOutput, Skill } from "../../types";
-import { FORM_LABELS, POSITION_LABELS, SKILL_LABELS, SKILL_ORDER } from "../../services/api";
+import { POSITION_LABELS, SKILL_LABELS, SKILL_ORDER } from "../../services/api";
 
 interface PlayerCardProps {
   profile: PlayerProfileOutput;
@@ -16,8 +16,6 @@ export function PlayerCard({
   actionText = "AÇÃO",
   onAction,
 }: PlayerCardProps) {
-  const formDelta = profile.formBonus > 0 ? `+${profile.formBonus}` : `${profile.formBonus}`;
-
   return (
     <div className="player-card-fut" style={{ padding: 24 }}>
       <div
@@ -25,7 +23,7 @@ export function PlayerCard({
         style={{ width: 140, height: 140, background: "rgba(210, 240, 0, 0.15)", top: -20, right: -20 }}
       />
 
-      {/* Top bar: overall + form / provisional badges */}
+      {/* Top bar: total rating + form indicator */}
       <div
         style={{
           display: "flex",
@@ -36,64 +34,52 @@ export function PlayerCard({
           marginBottom: 16,
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <span
-            className="font-display"
-            style={{
-              fontSize: "44px",
-              fontWeight: 900,
-              lineHeight: 1,
-              color: "var(--primary-fixed)",
-              letterSpacing: "-0.04em",
-            }}
-          >
-            {profile.currentRating}
-          </span>
-          <span
-            style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              color: "var(--on-surface-variant)",
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-            }}
-          >
-            Rating atual · base {profile.rating}
-          </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span
+              className="font-display"
+              style={{
+                fontSize: "44px",
+                fontWeight: 900,
+                lineHeight: 1,
+                color: "var(--primary-fixed)",
+                letterSpacing: "-0.04em",
+              }}
+            >
+              {profile.currentRating}
+            </span>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "var(--on-surface-variant)",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+              }}
+            >
+              Rating
+            </span>
+          </div>
+
+          <FormIndicator bonus={profile.formBonus} />
         </div>
 
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+        {profile.provisional && (
           <span
             style={{
               fontSize: "10px",
-              fontWeight: 800,
+              fontWeight: 700,
               textTransform: "uppercase",
               padding: "3px 8px",
               borderRadius: "4px",
-              background: "rgba(210, 240, 0, 0.15)",
-              color: "var(--primary-fixed)",
-              border: "1px solid rgba(210, 240, 0, 0.3)",
+              background: "rgba(173, 198, 255, 0.15)",
+              color: "var(--secondary)",
+              border: "1px solid rgba(173, 198, 255, 0.3)",
             }}
           >
-            Forma: {FORM_LABELS[profile.form] ?? profile.form} ({formDelta})
+            Provisório
           </span>
-          {profile.provisional && (
-            <span
-              style={{
-                fontSize: "10px",
-                fontWeight: 700,
-                textTransform: "uppercase",
-                padding: "3px 8px",
-                borderRadius: "4px",
-                background: "rgba(173, 198, 255, 0.15)",
-                color: "var(--secondary)",
-                border: "1px solid rgba(173, 198, 255, 0.3)",
-              }}
-            >
-              Provisório
-            </span>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Name + position */}
@@ -206,6 +192,25 @@ export function PlayerCard({
   );
 }
 
+function FormIndicator({ bonus }: { bonus: number }) {
+  if (!bonus) return null;
+  const up = bonus > 0;
+  const color = up ? "#3fd07a" : "var(--error)";
+  return (
+    <span
+      style={{ display: "inline-flex", alignItems: "center", gap: 2, color, lineHeight: 1 }}
+      title={up ? "Boa fase" : "Má fase"}
+    >
+      <span className="material-symbols-outlined filled" style={{ fontSize: "30px" }}>
+        {up ? "keyboard_double_arrow_up" : "keyboard_double_arrow_down"}
+      </span>
+      <span className="font-display" style={{ fontSize: "18px", fontWeight: 900 }}>
+        {up ? `+${bonus}` : bonus}
+      </span>
+    </span>
+  );
+}
+
 function RatingPill({ label, value }: { label: string; value: number }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -226,7 +231,8 @@ function RatingPill({ label, value }: { label: string; value: number }) {
 
 function SkillItem({ label, value }: { label: string; value?: number }) {
   const has = typeof value === "number";
-  const pct = has ? Math.max(0, Math.min(100, (value as number) * 10)) : 0;
+  const scaled = has ? Math.round((value as number) * 10) : 0;
+  const pct = Math.max(0, Math.min(100, scaled));
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <div
@@ -240,7 +246,7 @@ function SkillItem({ label, value }: { label: string; value?: number }) {
       >
         <span style={{ color: "var(--on-surface)" }}>{label}</span>
         <span style={{ color: "var(--primary-fixed)", fontFamily: "var(--font-display)" }}>
-          {has ? `${(value as number).toFixed(1)}/10` : "—"}
+          {has ? scaled : "—"}
         </span>
       </div>
       <div className="stat-bar-track">

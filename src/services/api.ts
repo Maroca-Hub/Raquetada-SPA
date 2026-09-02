@@ -50,7 +50,9 @@ export function createApi(getToken: () => string | undefined) {
       throw new ApiError(response.status, body.error ?? response.statusText);
     }
 
-    return response.status === 204 ? (undefined as T) : ((await response.json()) as T);
+    return response.status === 204
+      ? (undefined as T)
+      : ((await response.json()) as T);
   }
 
   return {
@@ -60,30 +62,51 @@ export function createApi(getToken: () => string | undefined) {
         if (params?.status) search.set("status", params.status);
         if (params?.organizerId) search.set("organizerId", params.organizerId);
         const query = search.toString();
-        return request<MatchOutput[]>(`/api/v1/matches${query ? `?${query}` : ""}`);
+        return request<MatchOutput[]>(
+          `/api/v1/matches${query ? `?${query}` : ""}`,
+        );
       },
       get: (id: string) => request<MatchOutput>(`/api/v1/matches/${id}`),
       create: (body: CreateMatchInput) =>
-        request<MatchOutput>("/api/v1/matches", { method: "POST", body: JSON.stringify(body) }),
-      update: (id: string, body: MatchInput) =>
-        request<MatchOutput>(`/api/v1/matches/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
-      registerResult: (id: string, body: MatchResultInput) =>
-        request<MatchOutput>(`/api/v1/matches/${id}/result`, { method: "POST", body: JSON.stringify(body) }),
-
-      listParticipations: (matchId: string) =>
-        request<ParticipationOutput[]>(`/api/v1/matches/${matchId}/participations`),
-      join: (matchId: string, body: JoinMatchInput) =>
-        request<ParticipationOutput>(`/api/v1/matches/${matchId}/participations`, {
+        request<MatchOutput>("/api/v1/matches", {
           method: "POST",
           body: JSON.stringify(body),
         }),
-      changeSlot: (matchId: string, body: ChangeSlotInput) =>
-        request<ParticipationOutput>(`/api/v1/matches/${matchId}/participations/me`, {
+      update: (id: string, body: MatchInput) =>
+        request<MatchOutput>(`/api/v1/matches/${id}`, {
           method: "PATCH",
           body: JSON.stringify(body),
         }),
+      registerResult: (id: string, body: MatchResultInput) =>
+        request<MatchOutput>(`/api/v1/matches/${id}/result`, {
+          method: "POST",
+          body: JSON.stringify(body),
+        }),
+
+      listParticipations: (matchId: string) =>
+        request<ParticipationOutput[]>(
+          `/api/v1/matches/${matchId}/participations`,
+        ),
+      join: (matchId: string, body: JoinMatchInput) =>
+        request<ParticipationOutput>(
+          `/api/v1/matches/${matchId}/participations`,
+          {
+            method: "POST",
+            body: JSON.stringify(body),
+          },
+        ),
+      changeSlot: (matchId: string, body: ChangeSlotInput) =>
+        request<ParticipationOutput>(
+          `/api/v1/matches/${matchId}/participations/me`,
+          {
+            method: "PATCH",
+            body: JSON.stringify(body),
+          },
+        ),
       leave: (matchId: string) =>
-        request<void>(`/api/v1/matches/${matchId}/participations/me`, { method: "DELETE" }),
+        request<void>(`/api/v1/matches/${matchId}/participations/me`, {
+          method: "DELETE",
+        }),
 
       listEvaluations: (matchId: string) =>
         request<EvaluationOutput[]>(`/api/v1/matches/${matchId}/evaluations`),
@@ -97,15 +120,20 @@ export function createApi(getToken: () => string | undefined) {
     players: {
       getMyProfile: () => request<PlayerProfileOutput>("/api/v1/players/me"),
       updateMyProfile: (body: PlayerInput) =>
-        request<PlayerOutput>("/api/v1/players/me", { method: "PATCH", body: JSON.stringify(body) }),
+        request<PlayerOutput>("/api/v1/players/me", {
+          method: "PATCH",
+          body: JSON.stringify(body),
+        }),
       list: () => request<PlayerOutput[]>("/api/v1/players"),
-      get: (id: string) => request<PlayerProfileOutput>(`/api/v1/players/${id}`),
+      get: (id: string) =>
+        request<PlayerProfileOutput>(`/api/v1/players/${id}`),
       listReceivedEvaluations: (id: string) =>
         request<EvaluationOutput[]>(`/api/v1/players/${id}/evaluations`),
     },
 
     evaluations: {
-      get: (id: string) => request<EvaluationOutput>(`/api/v1/evaluations/${id}`),
+      get: (id: string) =>
+        request<EvaluationOutput>(`/api/v1/evaluations/${id}`),
     },
   };
 }
@@ -123,7 +151,13 @@ export const SKILL_LABELS: Record<string, string> = {
   DEFENSE: "Defesa",
 };
 
-export const SKILL_ORDER = ["SERVE", "SMASH", "LOB", "DEFENSE", "POSITIONING"] as const;
+export const SKILL_ORDER = [
+  "SERVE",
+  "SMASH",
+  "LOB",
+  "DEFENSE",
+  "POSITIONING",
+] as const;
 
 export const FORM_LABELS: Record<string, string> = {
   AWFUL: "Péssima",
@@ -137,6 +171,12 @@ export const POSITION_LABELS: Record<string, string> = {
   DRIVE: "Drive (direita)",
   REVES: "Revés (esquerda)",
 };
+
+export const RELIABILITY_FLOOR = 0.6;
+
+export function isRatingReliable(reliability: number): boolean {
+  return reliability >= RELIABILITY_FLOOR;
+}
 
 export function formatMatchDateTime(iso: string): string {
   const date = new Date(iso);

@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { PlayerCard } from "../components/card/PlayerCard";
 import { useApi } from "../hooks/useApi";
+import { isRatingReliable } from "../services/api";
 import type { PlayerProfileOutput } from "../types";
 
 export function PlayerDetail() {
@@ -77,19 +78,14 @@ export function PlayerDetail() {
           style={{ borderRadius: "16px", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}
         >
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-            <span style={{ color: "var(--on-surface-variant)" }}>Rating base / atual</span>
-            <span style={{ fontWeight: 700 }}>
-              {profile.rating} / {profile.currentRating}
-            </span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-            <span style={{ color: "var(--on-surface-variant)" }}>Confiabilidade</span>
-            <span style={{ fontWeight: 700 }}>{(profile.reliability * 100).toFixed(0)}%</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
             <span style={{ color: "var(--on-surface-variant)" }}>Avaliações recebidas</span>
             <span style={{ fontWeight: 700 }}>{evaluationCount ?? "—"}</span>
           </div>
+          {!isRatingReliable(profile.reliability) && (
+            <p style={{ fontSize: "12px", color: "var(--on-surface-variant)" }}>
+              Este jogador ainda tem poucas partidas recentes, então o rating pode não refletir bem o nível atual.
+            </p>
+          )}
         </section>
       </div>
     </Layout>
