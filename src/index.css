@@ -102,34 +102,15 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* Fixed bars are fully opaque so scrolling content never shows through. */
 .glass-header {
-  background: rgba(14, 14, 14, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: #0e0e0e;
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .glass-nav {
-  background: rgba(20, 20, 20, 0.96);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background: #141414;
   border-top: 1px solid var(--border-subtle);
-}
-
-/* Fixed bars must stay legible where backdrop-filter is unavailable
-   (some mobile browsers, low-power mode) — fall back to near-opaque. */
-@supports not (
-  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
-) {
-  .glass-header {
-    background: rgba(14, 14, 14, 0.98);
-  }
-  .glass-nav {
-    background: rgba(20, 20, 20, 0.99);
-  }
-  .glass-panel {
-    background: rgba(26, 26, 26, 0.97);
-  }
 }
 
 /* Neon & Glowing Effects */
