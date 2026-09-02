@@ -3,6 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { useApi } from "../../hooks/useApi";
 import type { PadelPosition } from "../../types";
 import { POSITION_LABELS } from "../../services/api";
+import {
+  formatDateBR,
+  maskDateBR,
+  maskTimeBR,
+  parseDateTimeBR,
+  toLocalISOString,
+} from "../../lib/brDateTime";
 
 interface CreateMatchModalProps {
   isOpen: boolean;
@@ -32,9 +39,7 @@ const labelStyle: React.CSSProperties = {
 };
 
 function defaultDate() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return formatDateBR(new Date());
 }
 
 export function CreateMatchModal({
@@ -63,8 +68,12 @@ export function CreateMatchModal({
       return;
     }
 
-    const dateTime = new Date(`${date}T${time}:00`);
-    if (Number.isNaN(dateTime.getTime()) || dateTime.getTime() <= Date.now()) {
+    const dateTime = parseDateTimeBR(date, time);
+    if (!dateTime) {
+      setError("Data ou hora inválida. Use dd/mm/aaaa e hh:mm.");
+      return;
+    }
+    if (dateTime.getTime() <= Date.now()) {
       setError("Escolha uma data e hora no futuro.");
       return;
     }
@@ -72,7 +81,7 @@ export function CreateMatchModal({
     setSubmitting(true);
     try {
       const created = await api.matches.create({
-        dateTime: dateTime.toISOString(),
+        dateTime: toLocalISOString(dateTime),
         location: location.trim(),
         position,
       });
@@ -187,9 +196,12 @@ export function CreateMatchModal({
             <div>
               <label style={labelStyle}>Data</label>
               <input
-                type="date"
+                type="text"
+                inputMode="numeric"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => setDate(maskDateBR(e.target.value))}
+                placeholder="dd/mm/aaaa"
+                maxLength={10}
                 style={inputStyle}
                 required
               />
@@ -197,9 +209,12 @@ export function CreateMatchModal({
             <div>
               <label style={labelStyle}>Hora</label>
               <input
-                type="time"
+                type="text"
+                inputMode="numeric"
                 value={time}
-                onChange={(e) => setTime(e.target.value)}
+                onChange={(e) => setTime(maskTimeBR(e.target.value))}
+                placeholder="hh:mm"
+                maxLength={5}
                 style={inputStyle}
                 required
               />
