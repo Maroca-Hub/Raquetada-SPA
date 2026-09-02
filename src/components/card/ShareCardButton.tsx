@@ -25,10 +25,12 @@ export function ShareCardButton({ profile }: { profile: PlayerProfileOutput }) {
     if (!exportRef.current || busy) return;
     setBusy(true);
     try {
+      const profileUrl = `${window.location.origin}/players/${profile.id}`;
       const result = await shareNodeAsImage(exportRef.current, {
         fileName: `card-lob-${slugify(profile.name)}.png`,
         title: `${profile.name} · Lob`,
-        text: `Meu card na Lob — GERAL ${profile.currentRating}`,
+        text: `Meu card na Lob — GERAL ${profile.currentRating}\nVer meu perfil: ${profileUrl}`,
+        url: profileUrl,
       });
       if (result === "downloaded")
         setToast("Imagem do card salva no dispositivo.");
