@@ -184,7 +184,7 @@ export function PlayerCard({
               marginBottom: 6,
             }}
           >
-            <span>Progresso p/ próximo rating</span>
+            <span>Progresso p/ próximo geral</span>
             <span
               className="font-display"
               style={{ color: "var(--primary-fixed)", fontSize: "13px" }}

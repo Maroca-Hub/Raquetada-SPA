@@ -4,6 +4,7 @@ import { Login } from "./pages/Login";
 import { Callback } from "./pages/Callback";
 import { Matches } from "./pages/Matches";
 import { MatchDetail } from "./pages/MatchDetail";
+import { Radar } from "./pages/Radar";
 import { Profile } from "./pages/Profile";
 import { PlayerDetail } from "./pages/PlayerDetail";
 import { Onboarding } from "./pages/Onboarding";
@@ -17,6 +18,7 @@ export const router = createBrowserRouter([
       { path: "/onboarding", element: <Onboarding /> },
       { path: "/", element: <Matches /> },
       { path: "/feed", element: <Matches /> },
+      { path: "/radar", element: <Radar /> },
       { path: "/matches/:id", element: <MatchDetail /> },
       { path: "/match/:id", element: <MatchDetail /> },
       { path: "/profile", element: <Profile /> },

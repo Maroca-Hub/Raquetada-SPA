@@ -21,7 +21,12 @@ export interface PlayerOutput {
   name: string;
   email: string;
   rating: number;
+  // null when the player has never played (or in embedded contexts like roster
+  // / participation.player / PATCH /players/me, where it isn't computed).
+  mainPosition: PadelPosition | null;
 }
+
+export type PlayerSort = "RATING_ASC" | "RATING_DESC";
 
 export interface PlayerProfileOutput {
   id: string;

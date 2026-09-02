@@ -12,6 +12,7 @@ import type {
   PlayerInput,
   PlayerOutput,
   PlayerProfileOutput,
+  PlayerSort,
   Skill,
 } from "../types";
 import { DEV_USER, isDevSession } from "../devSession";
@@ -127,7 +128,10 @@ export function createApi(getToken: () => string | undefined) {
           method: "PATCH",
           body: JSON.stringify(body),
         }),
-      list: () => request<PlayerOutput[]>("/api/v1/players"),
+      list: (params?: { sort?: PlayerSort }) =>
+        request<PlayerOutput[]>(
+          `/api/v1/players${params?.sort ? `?sort=${params.sort}` : ""}`,
+        ),
       get: (id: string) =>
         request<PlayerProfileOutput>(`/api/v1/players/${id}`),
       listReceivedEvaluations: (id: string) =>
