@@ -10,6 +10,7 @@ import { joinErrorMessage } from "../services/api";
 import type { MatchOutput, MatchStatus } from "../types";
 
 type StatusFilter = MatchStatus | "ALL";
+type MineFilter = "none" | "organized" | "participated";
 
 const FILTERS: { id: MatchStatus; label: string }[] = [
   { id: "AWAITING_PLAYERS", label: "Abertas" },
@@ -17,11 +18,16 @@ const FILTERS: { id: MatchStatus; label: string }[] = [
   { id: "FINISHED", label: "Concluídas" },
 ];
 
+const MINE_FILTERS: { id: Exclude<MineFilter, "none">; label: string }[] = [
+  { id: "organized", label: "Sou organizador" },
+  { id: "participated", label: "Sou participante" },
+];
+
 export function Matches() {
   const api = useApi();
 
   const [selectedFilter, setSelectedFilter] = useState<StatusFilter>("ALL");
-  const [onlyMine, setOnlyMine] = useState(false);
+  const [mineFilter, setMineFilter] = useState<MineFilter>("none");
   const [myId, setMyId] = useState<string>("");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -44,9 +50,10 @@ export function Matches() {
       api.matches.list({
         page,
         status: selectedFilter === "ALL" ? undefined : selectedFilter,
-        organizerId: onlyMine && myId ? myId : undefined,
+        organizerId: mineFilter === "organized" && myId ? myId : undefined,
+        participantId: mineFilter === "participated" && myId ? myId : undefined,
       }),
-    [api, selectedFilter, onlyMine, myId],
+    [api, selectedFilter, mineFilter, myId],
   );
 
   const {
@@ -164,14 +171,19 @@ export function Matches() {
             </button>
           ))}
 
-          <button
-            type="button"
-            onClick={() => setOnlyMine((v) => !v)}
-            aria-pressed={onlyMine}
-            className={`filter-chip ${onlyMine ? "active" : ""}`}
-          >
-            Organizadas por mim
-          </button>
+          {MINE_FILTERS.map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() =>
+                setMineFilter((prev) => (prev === opt.id ? "none" : opt.id))
+              }
+              aria-pressed={mineFilter === opt.id}
+              className={`filter-chip ${mineFilter === opt.id ? "active" : ""}`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </section>
 
         <section

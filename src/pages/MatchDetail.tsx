@@ -535,7 +535,7 @@ export function MatchDetail() {
                 })
               }
               onFinished={async () => {
-                setToastMessage("Avaliações concluídas!");
+                setToastMessage("Avaliações salvas!");
                 await loadData();
               }}
             />

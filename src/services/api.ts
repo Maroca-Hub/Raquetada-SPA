@@ -72,11 +72,14 @@ export function createApi(getToken: () => string | undefined) {
       list: (params?: {
         status?: MatchStatus;
         organizerId?: string;
+        participantId?: string;
         page?: number;
       }) => {
         const search = new URLSearchParams();
         if (params?.status) search.set("status", params.status);
         if (params?.organizerId) search.set("organizerId", params.organizerId);
+        if (params?.participantId)
+          search.set("participantId", params.participantId);
         if (params?.page != null) search.set("page", String(params.page));
         const query = search.toString();
         return requestPage<MatchOutput>(
