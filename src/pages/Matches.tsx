@@ -8,8 +8,7 @@ import type { MatchOutput, MatchStatus } from "../types";
 
 type StatusFilter = MatchStatus | "ALL";
 
-const FILTERS: { id: StatusFilter; label: string }[] = [
-  { id: "ALL", label: "Todas" },
+const FILTERS: { id: MatchStatus; label: string }[] = [
   { id: "AWAITING_PLAYERS", label: "Abertas" },
   { id: "SCHEDULED", label: "Confirmadas" },
   { id: "FINISHED", label: "Finalizadas" },
@@ -19,6 +18,7 @@ export function Matches() {
   const api = useApi();
 
   const [selectedFilter, setSelectedFilter] = useState<StatusFilter>("ALL");
+  const [onlyMine, setOnlyMine] = useState(false);
   const [matches, setMatches] = useState<MatchOutput[]>([]);
   const [myId, setMyId] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -28,12 +28,17 @@ export function Matches() {
 
   const loadData = useCallback(async () => {
     try {
-      const [me, matchList] = await Promise.all([
-        api.players.getMyProfile(),
-        api.matches.list(selectedFilter === "ALL" ? undefined : { status: selectedFilter }),
-      ]);
-      setError(null);
+      const me = await api.players.getMyProfile();
       setMyId(me.id);
+
+      const params: { status?: MatchStatus; organizerId?: string } = {};
+      if (selectedFilter !== "ALL") params.status = selectedFilter;
+      if (onlyMine) params.organizerId = me.id;
+
+      const matchList = await api.matches.list(
+        Object.keys(params).length ? params : undefined,
+      );
+      setError(null);
       setMatches(matchList);
     } catch (err) {
       setError((err as Error).message);
@@ -41,7 +46,7 @@ export function Matches() {
     } finally {
       setLoading(false);
     }
-  }, [api, selectedFilter]);
+  }, [api, selectedFilter, onlyMine]);
 
   useEffect(() => {
     void (async () => {
@@ -125,12 +130,23 @@ export function Matches() {
             <button
               key={opt.id}
               type="button"
-              onClick={() => setSelectedFilter(opt.id)}
+              onClick={() =>
+                setSelectedFilter((prev) => (prev === opt.id ? "ALL" : opt.id))
+              }
               className={`filter-chip ${selectedFilter === opt.id ? "active" : ""}`}
             >
               {opt.label}
             </button>
           ))}
+
+          <button
+            type="button"
+            onClick={() => setOnlyMine((v) => !v)}
+            aria-pressed={onlyMine}
+            className={`filter-chip ${onlyMine ? "active" : ""}`}
+          >
+            Organizadas por mim
+          </button>
         </section>
 
         <section style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -181,7 +197,14 @@ export function Matches() {
               </span>
               <p style={{ fontWeight: 600, color: "var(--on-surface)" }}>Nenhuma partida para este filtro.</p>
               <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-                <button type="button" onClick={() => setSelectedFilter("ALL")} className="btn-secondary">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedFilter("ALL");
+                    setOnlyMine(false);
+                  }}
+                  className="btn-secondary"
+                >
                   Ver todas
                 </button>
                 <button type="button" onClick={() => setIsCreateModalOpen(true)} className="btn-primary">
