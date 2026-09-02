@@ -28,6 +28,7 @@ export interface PlayerProfileOutput {
   name: string;
   email: string;
   rating: number;
+  progressToNextRating: number; // 0..100 — progress toward the next overall point
   currentRating: number;
   formBonus: number;
   form: Form;

@@ -3,6 +3,7 @@ import { useAuth } from "react-oidc-context";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { PlayerCard } from "../components/card/PlayerCard";
+import { SkillRadar } from "../components/card/SkillRadar";
 import { Toast } from "../components/common/Toast";
 import { useApi } from "../hooks/useApi";
 import { isRatingReliable } from "../services/api";
@@ -129,7 +130,7 @@ export function Profile() {
     <Layout title="Meu perfil">
       <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
         <section className="animate-fade-in">
-          <PlayerCard profile={profile} showSkills />
+          <PlayerCard profile={profile} />
         </section>
 
         <section
@@ -156,12 +157,14 @@ export function Profile() {
           </div>
           {!isRatingReliable(profile.reliability) && (
             <p style={{ fontSize: "12px", color: "var(--on-surface-variant)" }}>
-              Você tem poucas partidas recentes, então seu rating pode não
+              Você tem poucas partidas recentes, então seu geral pode não
               refletir bem o seu nível atual. Jogue e receba mais avaliações
               para consolidá-lo.
             </p>
           )}
         </section>
+
+        <SkillRadar skills={profile.skillRatings} />
 
         <section
           style={{

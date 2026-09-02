@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { PlayerCard } from "../components/card/PlayerCard";
+import { SkillRadar } from "../components/card/SkillRadar";
 import { useApi } from "../hooks/useApi";
 import { isRatingReliable } from "../services/api";
 import type { PlayerProfileOutput } from "../types";
@@ -102,7 +103,7 @@ export function PlayerDetail() {
     <Layout showBack title={profile.name}>
       <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
         <section className="animate-fade-in">
-          <PlayerCard profile={profile} showSkills />
+          <PlayerCard profile={profile} />
         </section>
 
         <section
@@ -134,6 +135,8 @@ export function PlayerDetail() {
             </p>
           )}
         </section>
+
+        <SkillRadar skills={profile.skillRatings} />
       </div>
     </Layout>
   );

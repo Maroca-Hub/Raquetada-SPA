@@ -1,9 +1,11 @@
-import type { PlayerProfileOutput, Skill } from "../../types";
-import { POSITION_LABELS, SKILL_LABELS, SKILL_ORDER } from "../../services/api";
+import type { PlayerProfileOutput } from "../../types";
+import { POSITION_LABELS } from "../../services/api";
+
+const clampPct = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
 interface PlayerCardProps {
   profile: PlayerProfileOutput;
-  showSkills?: boolean;
+  showProgress?: boolean;
   showAction?: boolean;
   actionText?: string;
   onAction?: () => void;
@@ -11,7 +13,7 @@ interface PlayerCardProps {
 
 export function PlayerCard({
   profile,
-  showSkills = true,
+  showProgress = true,
   showAction = false,
   actionText = "AÇÃO",
   onAction,
@@ -154,41 +156,45 @@ export function PlayerCard({
         </div>
       </div>
 
-      {/* Skill ratings (0..10, from peer evaluations) */}
-      {showSkills && (
+      {/* Progress to next rating */}
+      {showProgress && (
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
             position: "relative",
             zIndex: 2,
             background: "rgba(14, 14, 14, 0.6)",
-            padding: "14px 16px",
+            padding: "16px",
             borderRadius: "14px",
             border: "1px solid var(--border-subtle)",
           }}
         >
           <div
             style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
               fontSize: "11px",
               fontWeight: 700,
               color: "var(--on-surface-variant)",
               textTransform: "uppercase",
               letterSpacing: "0.06em",
-              marginBottom: 2,
+              marginBottom: 6,
             }}
           >
-            Fundamentos avaliados
+            <span>Progresso p/ próximo rating</span>
+            <span
+              className="font-display"
+              style={{ color: "var(--primary-fixed)", fontSize: "13px" }}
+            >
+              {clampPct(profile.progressToNextRating)}%
+            </span>
           </div>
-
-          {SKILL_ORDER.map((skill) => (
-            <SkillItem
-              key={skill}
-              label={SKILL_LABELS[skill]}
-              value={profile.skillRatings[skill as Skill]}
+          <div className="stat-bar-track">
+            <div
+              className="stat-bar-fill"
+              style={{ width: `${clampPct(profile.progressToNextRating)}%` }}
             />
-          ))}
+          </div>
         </div>
       )}
 
@@ -269,38 +275,6 @@ function RatingPill({ label, value }: { label: string; value: number }) {
       >
         {label}
       </span>
-    </div>
-  );
-}
-
-function SkillItem({ label, value }: { label: string; value?: number }) {
-  const has = typeof value === "number";
-  const scaled = has ? Math.round((value as number) * 10) : 0;
-  const pct = Math.max(0, Math.min(100, scaled));
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          fontSize: "12px",
-          fontWeight: 700,
-        }}
-      >
-        <span style={{ color: "var(--on-surface)" }}>{label}</span>
-        <span
-          style={{
-            color: "var(--primary-fixed)",
-            fontFamily: "var(--font-display)",
-          }}
-        >
-          {has ? scaled : "—"}
-        </span>
-      </div>
-      <div className="stat-bar-track">
-        <div className="stat-bar-fill" style={{ width: `${pct}%` }} />
-      </div>
     </div>
   );
 }

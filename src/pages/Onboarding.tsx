@@ -53,7 +53,15 @@ export function Onboarding() {
         padding: "24px 16px 48px",
       }}
     >
-      <div style={{ maxWidth: "480px", margin: "0 auto", display: "flex", flexDirection: "column", gap: "24px" }}>
+      <div
+        style={{
+          maxWidth: "480px",
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: "24px",
+        }}
+      >
         <div style={{ textAlign: "center" }}>
           <span
             style={{
@@ -68,22 +76,47 @@ export function Onboarding() {
           </span>
           <h1
             className="font-display"
-            style={{ fontSize: "28px", fontWeight: 900, color: "var(--on-surface)", marginTop: 4 }}
+            style={{
+              fontSize: "28px",
+              fontWeight: 900,
+              color: "var(--on-surface)",
+              marginTop: 4,
+            }}
           >
             Como você quer ser chamado?
           </h1>
-          <p style={{ fontSize: "13px", color: "var(--on-surface-variant)", marginTop: 4 }}>
-            Seu rating e seus fundamentos evoluem conforme você joga e recebe avaliações.
+          <p
+            style={{
+              fontSize: "13px",
+              color: "var(--on-surface-variant)",
+              marginTop: 4,
+            }}
+          >
+            Seu geral e seus fundamentos evoluem conforme você joga e recebe
+            avaliações.
           </p>
         </div>
 
         <form
           onSubmit={handleSubmit}
           className="glass-panel"
-          style={{ borderRadius: "20px", padding: "24px", display: "flex", flexDirection: "column", gap: "16px" }}
+          style={{
+            borderRadius: "20px",
+            padding: "24px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
         >
           <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 700, marginBottom: 6 }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "12px",
+                fontWeight: 700,
+                marginBottom: 6,
+              }}
+            >
               Nome
             </label>
             <input
@@ -111,15 +144,24 @@ export function Onboarding() {
             type="submit"
             className="btn-primary"
             disabled={submitting || !loaded}
-            style={{ width: "100%", padding: "16px", fontSize: "16px", borderRadius: "var(--radius-full)" }}
+            style={{
+              width: "100%",
+              padding: "16px",
+              fontSize: "16px",
+              borderRadius: "var(--radius-full)",
+            }}
           >
-            <span className="material-symbols-outlined filled">sports_tennis</span>
+            <span className="material-symbols-outlined filled">
+              sports_tennis
+            </span>
             {submitting ? "Salvando..." : "Entrar na quadra"}
           </button>
         </form>
       </div>
 
-      {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
+      {toastMessage && (
+        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+      )}
     </div>
   );
 }
