@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { ShareButton } from "../components/common/ShareButton";
@@ -463,24 +464,27 @@ export function MatchDetail() {
             locked={!hasStarted}
             message="Aguarde o início da partida para avaliar os jogadores."
           >
-            <EvaluationSection
-              roster={roster}
-              myId={myId}
-              evaluations={evaluations}
-              onSubmit={async (evaluatedPlayerId, scores) => {
-                try {
-                  await api.matches.createEvaluation(matchId, {
-                    evaluatedPlayerId,
-                    skillRatings: SKILL_ORDER.map((skill) => ({
-                      skill,
-                      score: scores[skill],
-                    })),
-                  });
-                  setToastMessage("Avaliação enviada!");
-                  await loadData();
-                } catch (err) {
-                  setToastMessage((err as Error).message);
-                }
+            <EvaluationPanel
+              targets={roster.filter((p) => p.player.id !== myId)}
+              evaluatedIds={
+                new Set(
+                  evaluations
+                    .filter((e) => e.evaluatorPlayerId === myId)
+                    .map((e) => e.evaluatedPlayerId),
+                )
+              }
+              onEvaluate={(playerId, scores) =>
+                api.matches.createEvaluation(matchId, {
+                  evaluatedPlayerId: playerId,
+                  skillRatings: SKILL_ORDER.map((skill) => ({
+                    skill,
+                    score: scores[skill],
+                  })),
+                })
+              }
+              onFinished={async () => {
+                setToastMessage("Avaliações concluídas!");
+                await loadData();
               }}
             />
           </LockedUntilStart>
@@ -929,23 +933,25 @@ function StepButton({
   );
 }
 
-function EvaluationSection({
-  roster,
-  myId,
-  evaluations,
-  onSubmit,
+function EvaluationPanel({
+  targets,
+  evaluatedIds,
+  onEvaluate,
+  onFinished,
 }: {
-  roster: RosterMemberOutput[];
-  myId: string;
-  evaluations: EvaluationOutput[];
-  onSubmit: (evaluatedPlayerId: string, scores: Record<Skill, number>) => void;
+  targets: RosterMemberOutput[];
+  evaluatedIds: Set<string>;
+  onEvaluate: (
+    playerId: string,
+    scores: Record<Skill, number>,
+  ) => Promise<unknown>;
+  onFinished: () => void | Promise<void>;
 }) {
-  const evaluatedByMe = new Set(
-    evaluations
-      .filter((e) => e.evaluatorPlayerId === myId)
-      .map((e) => e.evaluatedPlayerId),
-  );
-  const targets = roster.filter((p) => p.player.id !== myId);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const pending = targets.filter((p) => !evaluatedIds.has(p.player.id));
+  const doneCount = targets.length - pending.length;
+  const allDone = pending.length === 0;
 
   return (
     <section
@@ -955,128 +961,319 @@ function EvaluationSection({
         padding: "20px",
         display: "flex",
         flexDirection: "column",
-        gap: "16px",
+        gap: "14px",
       }}
     >
       <h2
         className="font-display"
-        style={{
-          fontSize: "17px",
-          fontWeight: 800,
-          color: "var(--on-surface)",
-        }}
+        style={{ fontSize: "17px", fontWeight: 800, color: "var(--on-surface)" }}
       >
-        Avaliar fundamentos dos colegas
+        Avaliações da partida
       </h2>
-      {targets.map((p) =>
-        evaluatedByMe.has(p.player.id) ? (
-          <div
-            key={p.player.id}
-            style={{
-              fontSize: "13px",
-              color: "var(--on-surface-variant)",
-              fontWeight: 600,
-            }}
+
+      {allDone ? (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "var(--primary-fixed)",
+          }}
+        >
+          <span className="material-symbols-outlined filled" style={{ fontSize: "22px" }}>
+            check_circle
+          </span>
+          Você já avaliou todos os jogadores desta partida.
+        </div>
+      ) : (
+        <>
+          <p style={{ fontSize: "13px", color: "var(--on-surface-variant)" }}>
+            {doneCount > 0
+              ? `Faltam ${pending.length} de ${targets.length} jogadores.`
+              : `Avalie os ${targets.length} jogadores que jogaram com você.`}
+          </p>
+          <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="btn-primary"
+            style={{ width: "100%" }}
           >
-            ✓ {p.player.name} já avaliado
-          </div>
-        ) : (
-          <EvaluationForm
-            key={p.player.id}
-            name={p.player.name}
-            onSubmit={(scores) => onSubmit(p.player.id, scores)}
-          />
-        ),
+            {doneCount > 0 ? "Concluir avaliações" : "Iniciar avaliações"}
+          </button>
+        </>
+      )}
+
+      {modalOpen && (
+        <EvaluationModal
+          players={pending}
+          onEvaluate={onEvaluate}
+          onClose={(completedAny) => {
+            setModalOpen(false);
+            if (completedAny) void onFinished();
+          }}
+        />
       )}
     </section>
   );
 }
 
-function EvaluationForm({
-  name,
-  onSubmit,
-}: {
-  name: string;
-  onSubmit: (scores: Record<Skill, number>) => void;
-}) {
-  const [scores, setScores] = useState<Record<Skill, number>>(
-    () =>
-      Object.fromEntries(SKILL_ORDER.map((s) => [s, 5])) as Record<
-        Skill,
-        number
-      >,
-  );
+const neutralStars = () =>
+  Object.fromEntries(SKILL_ORDER.map((s) => [s, 2.5])) as Record<Skill, number>;
 
-  return (
+function EvaluationModal({
+  players,
+  onEvaluate,
+  onClose,
+}: {
+  players: RosterMemberOutput[];
+  onEvaluate: (
+    playerId: string,
+    scores: Record<Skill, number>,
+  ) => Promise<unknown>;
+  onClose: (completedAny: boolean) => void;
+}) {
+  const [index, setIndex] = useState(0);
+  const [stars, setStars] = useState<Record<Skill, number>>(neutralStars);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const completedRef = useRef(false);
+
+  const current = players[index];
+
+  const handleSubmit = async () => {
+    if (!current || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const scores = Object.fromEntries(
+        SKILL_ORDER.map((s) => [s, Math.round(stars[s] * 2)]),
+      ) as Record<Skill, number>;
+      await onEvaluate(current.player.id, scores);
+      completedRef.current = true;
+      if (index + 1 >= players.length) {
+        onClose(true);
+      } else {
+        setIndex(index + 1);
+        setStars(neutralStars());
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return createPortal(
     <div
       style={{
-        background: "rgba(14, 14, 14, 0.7)",
-        border: "1px solid var(--border-subtle)",
-        borderRadius: "12px",
-        padding: "14px",
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        backgroundColor: "rgba(0, 0, 0, 0.85)",
+        backdropFilter: "blur(8px)",
         display: "flex",
-        flexDirection: "column",
-        gap: "10px",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px",
+        overflowY: "auto",
       }}
+      onClick={() => onClose(completedRef.current)}
     >
-      <span
+      <div
+        className="glass-panel"
         style={{
-          fontWeight: 700,
-          fontSize: "14px",
-          color: "var(--on-surface)",
+          width: "100%",
+          maxWidth: 460,
+          borderRadius: "24px",
+          padding: "24px",
+          backgroundColor: "rgba(19, 19, 19, 0.97)",
+          border: "1px solid var(--border-subtle)",
+          boxShadow: "0 25px 60px rgba(0, 0, 0, 0.9)",
         }}
+        onClick={(e) => e.stopPropagation()}
       >
-        {name}
-      </span>
-      {SKILL_ORDER.map((skill) => (
-        <label
-          key={skill}
+        <div
           style={{
             display: "flex",
+            justifyContent: "space-between",
             alignItems: "center",
-            gap: 10,
-            fontSize: "12px",
+            marginBottom: "16px",
+            borderBottom: "1px solid var(--border-subtle)",
+            paddingBottom: "14px",
           }}
         >
-          <span
-            style={{ width: 110, color: "var(--on-surface)", fontWeight: 600 }}
-          >
-            {SKILL_LABELS[skill]}
-          </span>
-          <input
-            type="range"
-            min={1}
-            max={10}
-            value={scores[skill]}
-            onChange={(e) =>
-              setScores((prev) => ({
-                ...prev,
-                [skill]: Number(e.target.value),
-              }))
-            }
-            style={{ flex: 1 }}
-          />
-          <span
-            className="font-display"
+          <div>
+            <span
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "var(--on-surface-variant)",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              Jogador {index + 1} de {players.length}
+            </span>
+            <h2
+              className="font-display"
+              style={{
+                fontSize: "20px",
+                fontWeight: 800,
+                color: "var(--on-surface)",
+              }}
+            >
+              {current?.player.name ?? ""}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => onClose(completedRef.current)}
             style={{
-              width: 24,
-              textAlign: "right",
-              color: "var(--primary-fixed)",
-              fontWeight: 800,
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              backgroundColor: "var(--surface-container-high)",
+              border: "1px solid var(--border-subtle)",
+              color: "var(--on-surface-variant)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              flexShrink: 0,
             }}
           >
-            {scores[skill]}
-          </span>
-        </label>
-      ))}
-      <button
-        type="button"
-        onClick={() => onSubmit(scores)}
-        className="btn-primary"
-        style={{ width: "100%" }}
-      >
-        Enviar avaliação
-      </button>
+            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+              close
+            </span>
+          </button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          {SKILL_ORDER.map((skill) => (
+            <div
+              key={skill}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "var(--on-surface)",
+                }}
+              >
+                {SKILL_LABELS[skill]}
+              </span>
+              <StarRating
+                value={stars[skill]}
+                onChange={(v) => setStars((prev) => ({ ...prev, [skill]: v }))}
+              />
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <p
+            style={{
+              color: "var(--error)",
+              fontSize: "13px",
+              fontWeight: 600,
+              marginTop: 12,
+            }}
+          >
+            {error}
+          </p>
+        )}
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="btn-primary"
+          style={{ width: "100%", marginTop: 18 }}
+        >
+          {submitting
+            ? "Enviando..."
+            : index + 1 >= players.length
+              ? "Enviar e concluir"
+              : "Enviar e próximo"}
+        </button>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+function StarRating({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div style={{ display: "flex", gap: 2 }}>
+      {[1, 2, 3, 4, 5].map((i) => {
+        const kind =
+          value >= i ? "full" : value >= i - 0.5 ? "half" : "empty";
+        return (
+          <div key={i} style={{ position: "relative", width: 30, height: 30 }}>
+            <span
+              className={`material-symbols-outlined ${kind !== "empty" ? "filled" : ""}`}
+              style={{
+                position: "absolute",
+                inset: 0,
+                fontSize: "30px",
+                pointerEvents: "none",
+                color:
+                  kind === "empty"
+                    ? "var(--outline)"
+                    : "var(--primary-fixed)",
+              }}
+            >
+              {kind === "half" ? "star_half" : "star"}
+            </span>
+            <button
+              type="button"
+              aria-label={`${i - 0.5} estrelas`}
+              onClick={() => onChange(i - 0.5)}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: "50%",
+                height: "100%",
+                padding: 0,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+              }}
+            />
+            <button
+              type="button"
+              aria-label={`${i} estrelas`}
+              onClick={() => onChange(i)}
+              style={{
+                position: "absolute",
+                right: 0,
+                top: 0,
+                width: "50%",
+                height: "100%",
+                padding: 0,
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+              }}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
