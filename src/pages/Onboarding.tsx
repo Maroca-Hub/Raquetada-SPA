@@ -1,13 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApi } from "../hooks/useApi";
 import { Toast } from "../components/common/Toast";
+import { Avatar } from "../components/common/Avatar";
+
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
 export function Onboarding() {
   const api = useApi();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState("");
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -17,7 +24,9 @@ export function Onboarding() {
     api.players
       .getMyProfile()
       .then((p) => {
-        if (active && p?.name) setName(p.name);
+        if (!active) return;
+        if (p?.name) setName(p.name);
+        setCurrentImageUrl(p?.imageUrl ?? null);
       })
       .catch(() => {})
       .finally(() => {
@@ -28,6 +37,33 @@ export function Onboarding() {
     };
   }, [api]);
 
+  useEffect(() => {
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    void (async () => setPreviewUrl(url))();
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const clearFile = () => {
+    setFile(null);
+    setPreviewUrl(null);
+  };
+
+  const handlePick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    e.target.value = "";
+    if (!picked) return;
+    if (!picked.type.startsWith("image/")) {
+      setToastMessage("Escolha um arquivo de imagem.");
+      return;
+    }
+    if (picked.size > MAX_IMAGE_BYTES) {
+      setToastMessage("A imagem precisa ter no máximo 8 MB.");
+      return;
+    }
+    setFile(picked);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
@@ -36,7 +72,10 @@ export function Onboarding() {
     }
     setSubmitting(true);
     try {
-      await api.players.updateMyProfile({ name: name.trim() });
+      await api.players.updateMyProfile({
+        name: name.trim(),
+        image: file ?? undefined,
+      });
       navigate("/", { replace: true });
     } catch (err) {
       setToastMessage((err as Error).message);
@@ -83,7 +122,7 @@ export function Onboarding() {
               marginTop: 4,
             }}
           >
-            Como você quer ser chamado?
+            Seu perfil
           </h1>
           <p
             style={{
@@ -105,9 +144,60 @@ export function Onboarding() {
             padding: "24px",
             display: "flex",
             flexDirection: "column",
-            gap: "16px",
+            gap: "20px",
           }}
         >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <Avatar
+              src={previewUrl ?? currentImageUrl}
+              name={name || "?"}
+              size={104}
+              style={{ border: "3px solid var(--primary-fixed)" }}
+              letterColor="var(--primary-fixed)"
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handlePick}
+              style={{ display: "none" }}
+            />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="btn-secondary"
+                disabled={!loaded}
+              >
+                <span
+                  className="material-symbols-outlined"
+                  style={{ fontSize: "18px" }}
+                >
+                  photo_camera
+                </span>
+                {previewUrl || currentImageUrl
+                  ? "Trocar foto"
+                  : "Adicionar foto"}
+              </button>
+              {file && (
+                <button
+                  type="button"
+                  onClick={clearFile}
+                  className="btn-secondary"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </div>
+
           <div>
             <label
               style={{
@@ -154,7 +244,7 @@ export function Onboarding() {
             <span className="material-symbols-outlined filled">
               sports_tennis
             </span>
-            {submitting ? "Salvando..." : "Entrar na quadra"}
+            {submitting ? "Salvando..." : "Bora jogar!"}
           </button>
         </form>
       </div>

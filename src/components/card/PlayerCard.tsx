@@ -1,5 +1,6 @@
 import type { PlayerProfileOutput } from "../../types";
 import { POSITION_LABELS, SKILL_AXES } from "../../services/api";
+import { Avatar } from "../common/Avatar";
 
 const clampPct = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 const scale10 = (v?: number) => Math.round((v ?? 0) * 10);
@@ -105,28 +106,17 @@ export function PlayerCard({
           marginBottom: 20,
         }}
       >
-        <div
+        <Avatar
+          src={profile.imageUrl}
+          name={profile.name}
+          size={104}
           className="neon-glow"
           style={{
-            width: 104,
-            height: 104,
-            borderRadius: "50%",
             border: "3px solid var(--primary-fixed)",
-            backgroundColor: "var(--surface-container-high)",
             marginBottom: 14,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "var(--primary-fixed)",
           }}
-        >
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: "52px" }}
-          >
-            person
-          </span>
-        </div>
+          letterColor="var(--primary-fixed)"
+        />
 
         <h2
           className="font-display"

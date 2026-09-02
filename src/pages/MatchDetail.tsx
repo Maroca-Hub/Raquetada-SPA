@@ -4,6 +4,7 @@ import { useParams, Link } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { ShareButton } from "../components/common/ShareButton";
 import { Toast } from "../components/common/Toast";
+import { Avatar } from "../components/common/Avatar";
 import { EditMatchModal } from "../components/match/EditMatchModal";
 import { useApi } from "../hooks/useApi";
 import {
@@ -1013,25 +1014,18 @@ function CourtCell({
         }}
       >
         <div style={{ position: "relative" }}>
-          <div
+          <Avatar
+            src={part.player.imageUrl}
+            name={part.player.name}
+            size={54}
             className={isMe ? "neon-glow" : undefined}
             style={{
-              width: 54,
-              height: 54,
-              borderRadius: "50%",
               border: `3px solid ${isMe ? "var(--primary-fixed)" : "var(--outline-variant)"}`,
-              backgroundColor: "var(--surface-container-highest)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: isMe ? "var(--primary-fixed)" : "var(--on-surface)",
-              fontFamily: "var(--font-display)",
-              fontWeight: 900,
-              fontSize: "20px",
             }}
-          >
-            {part.player.name.charAt(0).toUpperCase()}
-          </div>
+            letterColor={
+              isMe ? "var(--primary-fixed)" : "var(--on-surface)"
+            }
+          />
           <span
             style={{
               position: "absolute",

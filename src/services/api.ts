@@ -34,8 +34,10 @@ export type Api = ReturnType<typeof createApi>;
 export function createApi(getToken: () => string | undefined) {
   async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const token = getToken();
+    const isForm = init?.body instanceof FormData;
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      // Let the browser set the multipart boundary for FormData bodies.
+      ...(isForm ? {} : { "Content-Type": "application/json" }),
       ...(init?.headers as Record<string, string> | undefined),
     };
 
@@ -146,11 +148,15 @@ export function createApi(getToken: () => string | undefined) {
 
     players: {
       getMyProfile: () => request<PlayerProfileOutput>("/api/v1/players/me"),
-      updateMyProfile: (body: PlayerInput) =>
-        request<PlayerOutput>("/api/v1/players/me", {
+      updateMyProfile: (body: PlayerInput) => {
+        const form = new FormData();
+        form.append("name", body.name);
+        if (body.image) form.append("image", body.image);
+        return request<PlayerOutput>("/api/v1/players/me", {
           method: "PATCH",
-          body: JSON.stringify(body),
-        }),
+          body: form,
+        });
+      },
       list: (params?: { sort?: PlayerSort; page?: number }) => {
         const search = new URLSearchParams();
         if (params?.sort) search.set("sort", params.sort);

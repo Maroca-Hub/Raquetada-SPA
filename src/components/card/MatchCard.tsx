@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import type { MatchOutput } from "../../types";
 import { formatMatchDateTime } from "../../services/api";
+import { Avatar } from "../common/Avatar";
 
 interface MatchCardProps {
   match: MatchOutput;
@@ -119,22 +120,18 @@ export function MatchCard({ match, myId, onJoin }: MatchCardProps) {
               key={`${part.team}-${part.position}`}
               title={`${part.player.name} · GRL ${part.player.rating}`}
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: "50%",
-                border: "2px solid var(--surface-container)",
-                backgroundColor: "var(--surface-container-high)",
                 marginLeft: index === 0 ? 0 : -8,
                 zIndex: 20 - index,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--primary-fixed)",
-                fontSize: "12px",
-                fontWeight: 700,
+                borderRadius: "50%",
               }}
             >
-              {part.player.name.charAt(0)}
+              <Avatar
+                src={part.player.imageUrl}
+                name={part.player.name}
+                size={38}
+                style={{ border: "2px solid var(--surface-container)" }}
+                letterColor="var(--primary-fixed)"
+              />
             </div>
           ))}
 

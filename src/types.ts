@@ -28,6 +28,8 @@ export interface PlayerOutput {
   // null when the player has never played (or in embedded contexts like roster
   // / participation.player / PATCH /players/me, where it isn't computed).
   mainPosition: PadelPosition | null;
+  // Cloudinary secure URL, or null when the player has no photo.
+  imageUrl: string | null;
 }
 
 export type PlayerSort = "RATING_ASC" | "RATING_DESC";
@@ -61,10 +63,13 @@ export interface PlayerProfileOutput {
   reliability: number;
   provisional: boolean;
   skillRatings: Partial<Record<Skill, number>>;
+  imageUrl: string | null;
 }
 
+// PATCH /players/me — multipart/form-data. `image` optional (image/*, non-empty).
 export interface PlayerInput {
   name: string;
+  image?: File | null;
 }
 
 // ---- Matches ------------------------------------------------------------

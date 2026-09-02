@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { InfiniteScrollSentinel } from "../components/common/InfiniteScrollSentinel";
 import { ShareAppBanner } from "../components/common/ShareAppBanner";
+import { Avatar } from "../components/common/Avatar";
 import { useApi } from "../hooks/useApi";
 import { usePaginatedList } from "../hooks/usePaginatedList";
 import type { PlayerOutput, PlayerSort } from "../types";
@@ -166,24 +167,13 @@ export function Radar() {
                   {index + 1}
                 </span>
 
-                <div
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: "50%",
-                    border: "2px solid var(--primary-fixed)",
-                    backgroundColor: "var(--surface-container-highest)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "var(--primary-fixed)",
-                    fontWeight: 700,
-                    fontSize: "14px",
-                    flexShrink: 0,
-                  }}
-                >
-                  {p.name.charAt(0).toUpperCase()}
-                </div>
+                <Avatar
+                  src={p.imageUrl}
+                  name={p.name}
+                  size={38}
+                  style={{ border: "2px solid var(--primary-fixed)" }}
+                  letterColor="var(--primary-fixed)"
+                />
 
                 <div
                   style={{

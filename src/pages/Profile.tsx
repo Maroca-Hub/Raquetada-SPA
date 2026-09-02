@@ -193,7 +193,7 @@ export function Profile() {
             >
               edit
             </span>
-            Editar meu nome
+            Editar perfil
           </button>
 
           <button
