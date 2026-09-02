@@ -158,7 +158,7 @@ export function Matches() {
             paddingBottom: "4px",
           }}
         >
-          {FILTERS.map((opt) => (
+          {FILTERS.map((opt, index) => (
             <button
               key={opt.id}
               type="button"
@@ -166,6 +166,7 @@ export function Matches() {
                 setSelectedFilter((prev) => (prev === opt.id ? "ALL" : opt.id))
               }
               className={`filter-chip ${selectedFilter === opt.id ? "active" : ""}`}
+              style={index === 0 ? { marginLeft: "auto" } : undefined}
             >
               {opt.label}
             </button>

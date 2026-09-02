@@ -23,14 +23,13 @@ export function ShareButton({
     e.stopPropagation();
 
     const shareUrl = `${window.location.origin}/matches/${matchId}`;
-    const shareText = `🎾 Bora jogar Padel no ${title}?\n📅 ${dateTime}\n📍 ${location}\nEntre na partida: ${shareUrl}`;
+    const shareText = `🎾 Bora jogar Padel?\n📅 ${dateTime}\n📍 ${location}\nEntre na partida: ${shareUrl}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: `Partida de Padel: ${title}`,
           text: shareText,
-          url: shareUrl,
         });
         return;
       } catch (err) {
