@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Layout } from "../components/layout/Layout";
 import { ShareButton } from "../components/common/ShareButton";
@@ -78,6 +78,22 @@ export function MatchDetail() {
       await loadData();
     })();
   }, [loadData]);
+
+  const startMs = match ? new Date(match.dateTime).getTime() : 0;
+  const [hasStarted, setHasStarted] = useState(false);
+  useEffect(() => {
+    if (!match) return;
+    const check = () => {
+      const started = Date.now() >= startMs;
+      setHasStarted(started);
+      return started;
+    };
+    if (check()) return;
+    const id = window.setInterval(() => {
+      if (check()) window.clearInterval(id);
+    }, 15000);
+    return () => window.clearInterval(id);
+  }, [match, startMs]);
 
   if (loading) {
     return (
@@ -353,6 +369,29 @@ export function MatchDetail() {
           />
         </section>
 
+        {/* Organizer: register result */}
+        {isOrganizer && match.status === "SCHEDULED" && (
+          <LockedUntilStart
+            locked={!hasStarted}
+            message="Aguarde o início da partida para registrar o resultado."
+          >
+            <ResultForm
+              onSubmit={async (scorePair1, scorePair2) => {
+                try {
+                  await api.matches.registerResult(matchId, {
+                    scorePair1,
+                    scorePair2,
+                  });
+                  setToastMessage("Resultado registrado!");
+                  await loadData();
+                } catch (err) {
+                  setToastMessage((err as Error).message);
+                }
+              }}
+            />
+          </LockedUntilStart>
+        )}
+
         {/* Court */}
         <section
           className="glass-panel animate-fade-in"
@@ -418,46 +457,33 @@ export function MatchDetail() {
           ) : null}
         </section>
 
-        {/* Organizer: register result */}
-        {isOrganizer && match.status === "SCHEDULED" && (
-          <ResultForm
-            onSubmit={async (scorePair1, scorePair2) => {
-              try {
-                await api.matches.registerResult(matchId, {
-                  scorePair1,
-                  scorePair2,
-                });
-                setToastMessage("Resultado registrado!");
-                await loadData();
-              } catch (err) {
-                setToastMessage((err as Error).message);
-              }
-            }}
-          />
-        )}
-
         {/* Peer evaluations (finished matches only) */}
         {isFinished && isConfirmed && (
-          <EvaluationSection
-            roster={roster}
-            myId={myId}
-            evaluations={evaluations}
-            onSubmit={async (evaluatedPlayerId, scores) => {
-              try {
-                await api.matches.createEvaluation(matchId, {
-                  evaluatedPlayerId,
-                  skillRatings: SKILL_ORDER.map((skill) => ({
-                    skill,
-                    score: scores[skill],
-                  })),
-                });
-                setToastMessage("Avaliação enviada!");
-                await loadData();
-              } catch (err) {
-                setToastMessage((err as Error).message);
-              }
-            }}
-          />
+          <LockedUntilStart
+            locked={!hasStarted}
+            message="Aguarde o início da partida para avaliar os jogadores."
+          >
+            <EvaluationSection
+              roster={roster}
+              myId={myId}
+              evaluations={evaluations}
+              onSubmit={async (evaluatedPlayerId, scores) => {
+                try {
+                  await api.matches.createEvaluation(matchId, {
+                    evaluatedPlayerId,
+                    skillRatings: SKILL_ORDER.map((skill) => ({
+                      skill,
+                      score: scores[skill],
+                    })),
+                  });
+                  setToastMessage("Avaliação enviada!");
+                  await loadData();
+                } catch (err) {
+                  setToastMessage((err as Error).message);
+                }
+              }}
+            />
+          </LockedUntilStart>
         )}
       </div>
 
@@ -677,6 +703,59 @@ function CourtCell({
   );
 }
 
+function LockedUntilStart({
+  locked,
+  message,
+  children,
+}: {
+  locked: boolean;
+  message: string;
+  children: React.ReactNode;
+}) {
+  if (!locked) return <>{children}</>;
+  return (
+    <div style={{ position: "relative" }}>
+      <div
+        aria-hidden
+        style={{
+          opacity: 0.18,
+          filter: "saturate(0.5)",
+          pointerEvents: "none",
+          userSelect: "none",
+        }}
+      >
+        {children}
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: "20px",
+          background: "rgba(6, 6, 6, 0.72)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "20px",
+          textAlign: "center",
+        }}
+      >
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: "13px",
+            fontWeight: 700,
+            color: "var(--on-surface-variant)",
+          }}
+        >
+          {message}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function ResultForm({
   onSubmit,
 }: {
@@ -711,13 +790,20 @@ function ResultForm({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: 14,
+          gap: 18,
+          padding: "6px 0",
         }}
       >
         <ScoreInput label="Dupla 1" value={s1} onChange={setS1} />
         <span
           className="font-display"
-          style={{ fontSize: "20px", fontWeight: 900 }}
+          style={{
+            fontSize: "24px",
+            fontWeight: 900,
+            color: "var(--on-surface-variant)",
+            alignSelf: "flex-end",
+            paddingBottom: 8,
+          }}
         >
           x
         </span>
@@ -736,6 +822,8 @@ function ResultForm({
   );
 }
 
+const MAX_SCORE = 99;
+
 function ScoreInput({
   label,
   value,
@@ -743,7 +831,7 @@ function ScoreInput({
 }: {
   label: string;
   value: number;
-  onChange: (n: number) => void;
+  onChange: React.Dispatch<React.SetStateAction<number>>;
 }) {
   return (
     <div
@@ -751,7 +839,7 @@ function ScoreInput({
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        gap: 4,
+        gap: 8,
       }}
     >
       <span
@@ -759,30 +847,85 @@ function ScoreInput({
           fontSize: "11px",
           color: "var(--on-surface-variant)",
           fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.04em",
         }}
       >
         {label}
       </span>
-      <input
-        type="number"
-        min={0}
-        value={value}
-        onChange={(e) => onChange(Math.max(0, Number(e.target.value)))}
-        style={{
-          width: 64,
-          padding: "10px",
-          borderRadius: "10px",
-          backgroundColor: "var(--surface-container-high)",
-          border: "1px solid var(--border-subtle)",
-          color: "var(--primary-fixed)",
-          fontFamily: "var(--font-display)",
-          fontWeight: 800,
-          fontSize: "18px",
-          textAlign: "center",
-          outline: "none",
-        }}
-      />
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <StepButton
+          icon="remove"
+          onStep={() => onChange((v) => Math.max(0, v - 1))}
+          disabled={value <= 0}
+        />
+        <span
+          className="font-display"
+          style={{
+            minWidth: 44,
+            textAlign: "center",
+            fontSize: "38px",
+            fontWeight: 900,
+            lineHeight: 1,
+            color: "var(--primary-fixed)",
+          }}
+        >
+          {value}
+        </span>
+        <StepButton
+          icon="add"
+          onStep={() => onChange((v) => Math.min(MAX_SCORE, v + 1))}
+          disabled={value >= MAX_SCORE}
+        />
+      </div>
     </div>
+  );
+}
+
+function StepButton({
+  icon,
+  onStep,
+  disabled,
+}: {
+  icon: "remove" | "add";
+  onStep: () => void;
+  disabled?: boolean;
+}) {
+  // Guard against the same tap dispatching twice (touch → synthetic click, or a
+  // fast double-tap): ignore a repeat within 200ms.
+  const lastRef = useRef(0);
+  const handle = () => {
+    const now = Date.now();
+    if (now - lastRef.current < 200) return;
+    lastRef.current = now;
+    onStep();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handle}
+      disabled={disabled}
+      aria-label={icon === "add" ? "Aumentar" : "Diminuir"}
+      style={{
+        width: 42,
+        height: 42,
+        borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--surface-container-high)",
+        border: "1px solid var(--border-subtle)",
+        color: "var(--on-surface)",
+        cursor: disabled ? "default" : "pointer",
+        opacity: disabled ? 0.35 : 1,
+        flexShrink: 0,
+      }}
+    >
+      <span className="material-symbols-outlined" style={{ fontSize: "24px" }}>
+        {icon}
+      </span>
+    </button>
   );
 }
 
