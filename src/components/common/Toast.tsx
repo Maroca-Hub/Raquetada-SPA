@@ -7,7 +7,12 @@ interface ToastProps {
   duration?: number;
 }
 
-export function Toast({ message, type = "success", onClose, duration = 3000 }: ToastProps) {
+export function Toast({
+  message,
+  type = "success",
+  onClose,
+  duration = 3000,
+}: ToastProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
@@ -23,8 +28,9 @@ export function Toast({ message, type = "success", onClose, duration = 3000 }: T
       style={{
         position: "fixed",
         top: 80,
-        left: "50%",
-        transform: "translateX(-50%)",
+        left: 0,
+        right: 0,
+        marginInline: "auto",
         zIndex: 100,
         display: "flex",
         alignItems: "center",
@@ -38,14 +44,19 @@ export function Toast({ message, type = "success", onClose, duration = 3000 }: T
         color: "#ffffff",
         fontSize: "14px",
         fontWeight: 600,
-        maxWidth: "90vw",
+        width: "90vw",
+        maxWidth: "660px",
         animation: "fadeIn 0.25s ease-out",
       }}
     >
       <span
         className="material-symbols-outlined filled"
         style={{
-          color: isSuccess ? "var(--primary-fixed)" : isError ? "var(--error)" : "var(--secondary)",
+          color: isSuccess
+            ? "var(--primary-fixed)"
+            : isError
+              ? "var(--error)"
+              : "var(--secondary)",
           fontSize: "20px",
         }}
       >
@@ -65,7 +76,12 @@ export function Toast({ message, type = "success", onClose, duration = 3000 }: T
           marginLeft: 8,
         }}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>close</span>
+        <span
+          className="material-symbols-outlined"
+          style={{ fontSize: "16px" }}
+        >
+          close
+        </span>
       </button>
     </div>
   );
