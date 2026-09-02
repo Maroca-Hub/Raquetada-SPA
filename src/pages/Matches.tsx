@@ -4,33 +4,21 @@ import { MatchCard } from "../components/card/MatchCard";
 import { CreateMatchModal } from "../components/match/CreateMatchModal";
 import { Toast } from "../components/common/Toast";
 import { useApi } from "../hooks/useApi";
-import type { MatchOutput, ParticipationOutput } from "../types";
+import type { MatchOutput, MatchStatus, ParticipationOutput } from "../types";
 
-type DayFilter = "today" | "tomorrow" | "weekend" | "all";
+type StatusFilter = MatchStatus | "ALL";
 
-const FILTERS: { id: DayFilter; label: string }[] = [
-  { id: "today", label: "Hoje" },
-  { id: "tomorrow", label: "Amanhã" },
-  { id: "weekend", label: "Fim de semana" },
-  { id: "all", label: "Todas" },
+const FILTERS: { id: StatusFilter; label: string }[] = [
+  { id: "ALL", label: "Todas" },
+  { id: "AWAITING_PLAYERS", label: "Abertas" },
+  { id: "SCHEDULED", label: "Confirmadas" },
+  { id: "FINISHED", label: "Finalizadas" },
 ];
-
-function matchesDayFilter(iso: string, filter: DayFilter): boolean {
-  if (filter === "all") return true;
-  const date = new Date(iso);
-  const now = new Date();
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const diffDays = Math.round((startOfDay(date).getTime() - startOfDay(now).getTime()) / 86_400_000);
-  if (filter === "today") return diffDays === 0;
-  if (filter === "tomorrow") return diffDays === 1;
-  // weekend: upcoming Saturday or Sunday
-  return diffDays >= 0 && diffDays <= 7 && (date.getDay() === 0 || date.getDay() === 6);
-}
 
 export function Matches() {
   const api = useApi();
 
-  const [selectedFilter, setSelectedFilter] = useState<DayFilter>("all");
+  const [selectedFilter, setSelectedFilter] = useState<StatusFilter>("ALL");
   const [matches, setMatches] = useState<MatchOutput[]>([]);
   const [rosters, setRosters] = useState<Record<string, ParticipationOutput[]>>({});
   const [myId, setMyId] = useState<string>("");
@@ -43,7 +31,10 @@ export function Matches() {
     setLoading(true);
     setError(null);
     try {
-      const [me, matchList] = await Promise.all([api.players.getMyProfile(), api.matches.list()]);
+      const [me, matchList] = await Promise.all([
+        api.players.getMyProfile(),
+        api.matches.list(selectedFilter === "ALL" ? undefined : { status: selectedFilter }),
+      ]);
       setMyId(me.id);
 
       const rosterEntries = await Promise.all(
@@ -64,13 +55,11 @@ export function Matches() {
     } finally {
       setLoading(false);
     }
-  }, [api]);
+  }, [api, selectedFilter]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const filteredMatches = matches.filter((m) => matchesDayFilter(m.dateTime, selectedFilter));
 
   const handleJoin = async (matchId: string) => {
     // Joining needs a slot; take the first free one.
@@ -177,7 +166,7 @@ export function Matches() {
                 Tentar novamente
               </button>
             </div>
-          ) : filteredMatches.length === 0 ? (
+          ) : matches.length === 0 ? (
             <div
               className="glass-panel"
               style={{
@@ -195,7 +184,7 @@ export function Matches() {
               </span>
               <p style={{ fontWeight: 600, color: "var(--on-surface)" }}>Nenhuma partida para este filtro.</p>
               <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-                <button type="button" onClick={() => setSelectedFilter("all")} className="btn-secondary">
+                <button type="button" onClick={() => setSelectedFilter("ALL")} className="btn-secondary">
                   Ver todas
                 </button>
                 <button type="button" onClick={() => setIsCreateModalOpen(true)} className="btn-primary">
@@ -204,7 +193,7 @@ export function Matches() {
               </div>
             </div>
           ) : (
-            filteredMatches.map((match) => (
+            matches.map((match) => (
               <MatchCard
                 key={match.id}
                 match={match}

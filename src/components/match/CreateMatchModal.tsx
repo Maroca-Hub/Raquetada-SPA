@@ -37,7 +37,11 @@ function defaultDate() {
   return d.toISOString().slice(0, 10);
 }
 
-export function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateMatchModalProps) {
+export function CreateMatchModal({
+  isOpen,
+  onClose,
+  onSuccess,
+}: CreateMatchModalProps) {
   const api = useApi();
   const navigate = useNavigate();
 
@@ -121,7 +125,14 @@ export function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateMatchModa
             paddingBottom: "14px",
           }}
         >
-          <h2 className="font-display" style={{ fontSize: "20px", fontWeight: 800, color: "var(--on-surface)" }}>
+          <h2
+            className="font-display"
+            style={{
+              fontSize: "20px",
+              fontWeight: 800,
+              color: "var(--on-surface)",
+            }}
+          >
             Criar nova partida
           </h2>
           <button
@@ -140,13 +151,19 @@ export function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateMatchModa
               cursor: "pointer",
             }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "18px" }}
+            >
               close
             </span>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+        <form
+          onSubmit={handleSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+        >
           <div>
             <label style={labelStyle}>Local</label>
             <input
@@ -160,19 +177,37 @@ export function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateMatchModa
             />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "12px",
+            }}
+          >
             <div>
               <label style={labelStyle}>Data</label>
-              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} required />
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                style={inputStyle}
+                required
+              />
             </div>
             <div>
               <label style={labelStyle}>Hora</label>
-              <input type="time" value={time} onChange={(e) => setTime(e.target.value)} style={inputStyle} required />
+              <input
+                type="time"
+                value={time}
+                onChange={(e) => setTime(e.target.value)}
+                style={inputStyle}
+                required
+              />
             </div>
           </div>
 
           <div>
-            <label style={labelStyle}>Sua posição (Dupla 1)</label>
+            <label style={labelStyle}>Sua posição</label>
             <select
               value={position}
               onChange={(e) => setPosition(e.target.value as PadelPosition)}
@@ -188,15 +223,36 @@ export function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateMatchModa
           </div>
 
           {error && (
-            <p style={{ color: "var(--error)", fontSize: "13px", fontWeight: 600 }}>{error}</p>
+            <p
+              style={{
+                color: "var(--error)",
+                fontSize: "13px",
+                fontWeight: 600,
+              }}
+            >
+              {error}
+            </p>
           )}
 
           <div style={{ display: "flex", gap: "12px", marginTop: "10px" }}>
-            <button type="button" onClick={onClose} disabled={submitting} className="btn-secondary" style={{ flex: 1 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="btn-secondary"
+              style={{ flex: 1 }}
+            >
               Cancelar
             </button>
-            <button type="submit" disabled={submitting} className="btn-primary" style={{ flex: 2, fontSize: "15px" }}>
-              <span className="material-symbols-outlined filled">add_circle</span>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="btn-primary"
+              style={{ flex: 2, fontSize: "15px" }}
+            >
+              <span className="material-symbols-outlined filled">
+                add_circle
+              </span>
               {submitting ? "Publicando..." : "Publicar partida"}
             </button>
           </div>
