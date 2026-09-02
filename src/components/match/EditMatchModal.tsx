@@ -243,7 +243,6 @@ export function EditMatchModal({
               className="btn-primary"
               style={{ flex: 2, fontSize: "15px" }}
             >
-              <span className="material-symbols-outlined filled">save</span>
               {submitting ? "Salvando..." : "Salvar"}
             </button>
           </div>

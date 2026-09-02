@@ -6,6 +6,7 @@ import { Toast } from "../components/common/Toast";
 import { InfiniteScrollSentinel } from "../components/common/InfiniteScrollSentinel";
 import { useApi } from "../hooks/useApi";
 import { usePaginatedList } from "../hooks/usePaginatedList";
+import { joinErrorMessage } from "../services/api";
 import type { MatchOutput, MatchStatus } from "../types";
 
 type StatusFilter = MatchStatus | "ALL";
@@ -75,7 +76,7 @@ export function Matches() {
       setToastMessage("Você entrou na partida!");
       reload();
     } catch (err) {
-      setToastMessage(`Erro ao entrar: ${(err as Error).message}`);
+      setToastMessage(joinErrorMessage(err));
     }
   };
 

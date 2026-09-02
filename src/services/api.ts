@@ -126,6 +126,11 @@ export function createApi(getToken: () => string | undefined) {
         request<void>(`/api/v1/matches/${matchId}/participations/me`, {
           method: "DELETE",
         }),
+      removeParticipant: (matchId: string, playerId: string) =>
+        request<void>(
+          `/api/v1/matches/${matchId}/participations/${playerId}`,
+          { method: "DELETE" },
+        ),
 
       listEvaluations: (matchId: string) =>
         request<EvaluationOutput[]>(`/api/v1/matches/${matchId}/evaluations`),
@@ -212,6 +217,15 @@ export const RELIABILITY_FLOOR = 0.6;
 
 export function isRatingReliable(reliability: number): boolean {
   return reliability >= RELIABILITY_FLOOR;
+}
+
+/** Friendlier text for the "removed player tries to join again" case (409). */
+export function joinErrorMessage(err: unknown): string {
+  const e = err as { status?: number; message?: string };
+  if (e?.status === 409 && (e.message ?? "").includes("was removed from match")) {
+    return "Você não está autorizado a entrar nessa partida.";
+  }
+  return e?.message ?? "Não foi possível entrar na partida.";
 }
 
 export function formatMatchDateTime(iso: string): string {

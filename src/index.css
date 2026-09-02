@@ -28,9 +28,9 @@
   --on-secondary-container: #e0e8ff;
 
   /* Error & Alerts */
-  --error: #ffb4ab;
-  --error-container: #93000a;
-  --on-error: #690005;
+  --error: #ff4d5e;
+  --error-container: #c31226;
+  --on-error: #ffffff;
 
   /* Typography */
   --font-display: "Montserrat", system-ui, -apple-system, sans-serif;

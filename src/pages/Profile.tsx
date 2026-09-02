@@ -8,7 +8,7 @@ import { ShareCardButton } from "../components/card/ShareCardButton";
 import { Toast } from "../components/common/Toast";
 import { useApi } from "../hooks/useApi";
 import { isRatingReliable } from "../services/api";
-import { clearDevSession, isDevSession } from "../devSession";
+import { clearDevSession } from "../devSession";
 import type { PlayerProfileOutput } from "../types";
 
 export function Profile() {
@@ -202,8 +202,9 @@ export function Profile() {
             className="btn-secondary"
             style={{
               width: "100%",
-              color: "var(--error)",
-              borderColor: "rgba(255, 180, 171, 0.2)",
+              background: "transparent",
+              color: "var(--on-surface-variant)",
+              borderColor: "var(--border-subtle)",
             }}
           >
             <span
@@ -212,9 +213,7 @@ export function Profile() {
             >
               logout
             </span>
-            {isDevSession() && !auth.isAuthenticated
-              ? "Sair do modo dev"
-              : "Sair da conta"}
+            Sair da conta
           </button>
         </section>
       </div>

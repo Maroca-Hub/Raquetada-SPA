@@ -11,6 +11,7 @@ import {
   SKILL_LABELS,
   SKILL_ORDER,
   formatMatchDateTime,
+  joinErrorMessage,
 } from "../services/api";
 import type {
   EvaluationOutput,
@@ -38,7 +39,7 @@ const POSITION_SHORT: Record<PadelPosition, string> = {
 
 const DANGER_BUTTON: React.CSSProperties = {
   backgroundColor: "var(--error-container)",
-  color: "var(--error)",
+  color: "var(--on-error)",
   boxShadow: "none",
 };
 
@@ -55,6 +56,10 @@ export function MatchDetail() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -167,7 +172,12 @@ export function MatchDetail() {
     try {
       if (!isConfirmed) {
         if (match.status !== "AWAITING_PLAYERS") return;
-        await api.matches.join(matchId, { team, position });
+        try {
+          await api.matches.join(matchId, { team, position });
+        } catch (err) {
+          setToastMessage(joinErrorMessage(err));
+          return;
+        }
         setToastMessage("Você entrou na partida!");
       } else {
         await api.matches.changeSlot(matchId, { team, position });
@@ -178,6 +188,18 @@ export function MatchDetail() {
       await loadData();
     } catch (err) {
       setToastMessage((err as Error).message);
+    }
+  };
+
+  const handleRemove = async (playerId: string) => {
+    try {
+      await api.matches.removeParticipant(matchId, playerId);
+      setToastMessage("Jogador removido da partida.");
+      await loadData();
+    } catch (err) {
+      setToastMessage((err as Error).message);
+    } finally {
+      setRemoveTarget(null);
     }
   };
 
@@ -443,6 +465,7 @@ export function MatchDetail() {
           <CourtLineup
             slotOf={slotOf}
             myId={myId}
+            organizerId={match.organizer.id}
             canPickSlot={(team, position) =>
               !slotOf(team, position) &&
               !isFinished &&
@@ -451,6 +474,9 @@ export function MatchDetail() {
                 (!isConfirmed && match.status === "AWAITING_PLAYERS"))
             }
             onPickSlot={handleSlotClick}
+            onRemove={
+              canCancel ? (player) => setRemoveTarget(player) : undefined
+            }
           />
         </section>
 
@@ -464,7 +490,7 @@ export function MatchDetail() {
               style={{
                 width: "100%",
                 color: "var(--error)",
-                borderColor: "rgba(255, 180, 171, 0.3)",
+                borderColor: "rgba(255, 77, 94, 0.35)",
               }}
             >
               Sair da partida
@@ -517,7 +543,9 @@ export function MatchDetail() {
         )}
 
         {canCancel && (
-          <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <section
+            style={{ display: "flex", flexDirection: "column", gap: 10 }}
+          >
             <button
               type="button"
               onClick={() => setEditing(true)}
@@ -566,6 +594,14 @@ export function MatchDetail() {
         <CancelMatchModal
           onConfirm={handleCancel}
           onClose={() => setConfirmingCancel(false)}
+        />
+      )}
+
+      {removeTarget && (
+        <RemovePlayerModal
+          name={removeTarget.name}
+          onConfirm={() => handleRemove(removeTarget.id)}
+          onClose={() => setRemoveTarget(null)}
         />
       )}
 
@@ -671,19 +707,120 @@ function CancelMatchModal({
   );
 }
 
+function RemovePlayerModal({
+  name,
+  onConfirm,
+  onClose,
+}: {
+  name: string;
+  onConfirm: () => Promise<void>;
+  onClose: () => void;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+
+  const run = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      await onConfirm();
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return createPortal(
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        backgroundColor: "rgba(0, 0, 0, 0.85)",
+        backdropFilter: "blur(8px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "16px",
+      }}
+      onClick={() => !submitting && onClose()}
+    >
+      <div
+        className="glass-panel"
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          borderRadius: "24px",
+          padding: "24px",
+          backgroundColor: "rgba(19, 19, 19, 0.97)",
+          border: "1px solid var(--border-subtle)",
+          boxShadow: "0 25px 60px rgba(0, 0, 0, 0.9)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2
+          className="font-display"
+          style={{
+            fontSize: "20px",
+            fontWeight: 800,
+            color: "var(--on-surface)",
+            marginBottom: 8,
+          }}
+        >
+          Remover jogador
+        </h2>
+        <p
+          style={{
+            fontSize: "14px",
+            color: "var(--on-surface-variant)",
+            lineHeight: 1.5,
+          }}
+        >
+          Remover <strong style={{ color: "var(--on-surface)" }}>{name}</strong>{" "}
+          da partida? O jogador não poderá entrar novamente nesta partida.
+        </p>
+
+        <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="btn-secondary"
+            style={{ flex: 1 }}
+          >
+            Voltar
+          </button>
+          <button
+            type="button"
+            onClick={run}
+            disabled={submitting}
+            className="btn-primary"
+            style={{ flex: 1, ...DANGER_BUTTON }}
+          >
+            {submitting ? "Removendo..." : "Remover"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function CourtLineup({
   slotOf,
   myId,
+  organizerId,
   canPickSlot,
   onPickSlot,
+  onRemove,
 }: {
   slotOf: (
     team: number,
     position: PadelPosition,
   ) => RosterMemberOutput | undefined;
   myId: string;
+  organizerId: string;
   canPickSlot: (team: number, position: PadelPosition) => boolean;
   onPickSlot: (team: number, position: PadelPosition) => void;
+  onRemove?: (player: { id: string; name: string }) => void;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -701,17 +838,30 @@ function CourtLineup({
         }}
       >
         {[1, 2].map((team) =>
-          columnsForTeam(team).map((position, colIndex) => (
-            <CourtCell
-              key={`${team}-${position}`}
-              part={slotOf(team, position)}
-              isMe={slotOf(team, position)?.player.id === myId}
-              isTopRow={team === 1}
-              isLeftCol={colIndex === 0}
-              clickable={canPickSlot(team, position)}
-              onClick={() => onPickSlot(team, position)}
-            />
-          )),
+          columnsForTeam(team).map((position, colIndex) => {
+            const p = slotOf(team, position);
+            const removable = !!onRemove && !!p && p.player.id !== organizerId;
+            return (
+              <CourtCell
+                key={`${team}-${position}`}
+                part={p}
+                isMe={p?.player.id === myId}
+                isTopRow={team === 1}
+                isLeftCol={colIndex === 0}
+                clickable={canPickSlot(team, position)}
+                onClick={() => onPickSlot(team, position)}
+                onRemove={
+                  removable && p
+                    ? () =>
+                        onRemove?.({
+                          id: p.player.id,
+                          name: p.player.name,
+                        })
+                    : undefined
+                }
+              />
+            );
+          }),
         )}
       </div>
 
@@ -754,6 +904,7 @@ function CourtCell({
   isLeftCol,
   clickable,
   onClick,
+  onRemove,
 }: {
   part?: RosterMemberOutput;
   isMe: boolean;
@@ -761,6 +912,7 @@ function CourtCell({
   isLeftCol: boolean;
   clickable: boolean;
   onClick: () => void;
+  onRemove?: () => void;
 }) {
   const cellStyle: React.CSSProperties = {
     minHeight: 240,
@@ -813,70 +965,114 @@ function CourtCell({
   }
 
   return (
-    <Link
-      to={`/players/${part.player.id}`}
-      style={{ ...cellStyle, textDecoration: "none" }}
-    >
-      <div style={{ position: "relative" }}>
-        <div
-          className={isMe ? "neon-glow" : undefined}
-          style={{
-            width: 54,
-            height: 54,
-            borderRadius: "50%",
-            border: `3px solid ${isMe ? "var(--primary-fixed)" : "var(--outline-variant)"}`,
-            backgroundColor: "var(--surface-container-highest)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: isMe ? "var(--primary-fixed)" : "var(--on-surface)",
-            fontFamily: "var(--font-display)",
-            fontWeight: 900,
-            fontSize: "20px",
+    <div style={{ ...cellStyle, position: "relative" }}>
+      {onRemove && (
+        <button
+          type="button"
+          aria-label={`Remover ${part.player.name}`}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onRemove();
           }}
-        >
-          {part.player.name.charAt(0).toUpperCase()}
-        </div>
-        <span
           style={{
             position: "absolute",
-            right: -2,
-            bottom: -2,
-            minWidth: 20,
-            height: 20,
-            padding: "0 4px",
-            borderRadius: "999px",
-            background: isMe
-              ? "var(--primary-fixed)"
-              : "var(--surface-container-highest)",
-            color: isMe ? "var(--on-primary-fixed)" : "var(--on-surface)",
-            border: "2px solid var(--surface-container)",
-            fontFamily: "var(--font-display)",
-            fontWeight: 800,
-            fontSize: "10px",
+            top: 6,
+            right: 6,
+            width: 26,
+            height: 26,
+            borderRadius: "50%",
+            background: "var(--surface-container-highest)",
+            border: "1px solid var(--border-subtle)",
+            color: "var(--error)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
+            cursor: "pointer",
+            zIndex: 2,
           }}
         >
-          {part.player.rating}
-        </span>
-      </div>
-
-      <span
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: "16px" }}
+          >
+            close
+          </span>
+        </button>
+      )}
+      <Link
+        to={`/players/${part.player.id}`}
         style={{
-          fontSize: "15px",
-          fontWeight: 800,
-          color: "var(--on-surface)",
-          maxWidth: "100%",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
+          width: "100%",
+          textDecoration: "none",
         }}
       >
-        {isMe ? "Você" : part.player.name}
-      </span>
-    </Link>
+        <div style={{ position: "relative" }}>
+          <div
+            className={isMe ? "neon-glow" : undefined}
+            style={{
+              width: 54,
+              height: 54,
+              borderRadius: "50%",
+              border: `3px solid ${isMe ? "var(--primary-fixed)" : "var(--outline-variant)"}`,
+              backgroundColor: "var(--surface-container-highest)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: isMe ? "var(--primary-fixed)" : "var(--on-surface)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 900,
+              fontSize: "20px",
+            }}
+          >
+            {part.player.name.charAt(0).toUpperCase()}
+          </div>
+          <span
+            style={{
+              position: "absolute",
+              right: -2,
+              bottom: -2,
+              minWidth: 20,
+              height: 20,
+              padding: "0 4px",
+              borderRadius: "999px",
+              background: isMe
+                ? "var(--primary-fixed)"
+                : "var(--surface-container-highest)",
+              color: isMe ? "var(--on-primary-fixed)" : "var(--on-surface)",
+              border: "2px solid var(--surface-container)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: "10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {part.player.rating}
+          </span>
+        </div>
+
+        <span
+          style={{
+            fontSize: "15px",
+            fontWeight: 800,
+            color: "var(--on-surface)",
+            maxWidth: "100%",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
+          {isMe ? "Você" : part.player.name}
+        </span>
+      </Link>
+    </div>
   );
 }
 
