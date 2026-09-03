@@ -1,6 +1,7 @@
 import type {
   ChangeSlotInput,
   CreateMatchInput,
+  EvaluationCountOutput,
   EvaluationInput,
   EvaluationOutput,
   JoinMatchInput,
@@ -168,8 +169,10 @@ export function createApi(getToken: () => string | undefined) {
       },
       get: (id: string) =>
         request<PlayerProfileOutput>(`/api/v1/players/${id}`),
-      listReceivedEvaluations: (id: string) =>
-        request<EvaluationOutput[]>(`/api/v1/players/${id}/evaluations`),
+      getReceivedEvaluationCount: (id: string) =>
+        request<EvaluationCountOutput>(
+          `/api/v1/players/${id}/evaluations/count`,
+        ),
     },
 
     evaluations: {

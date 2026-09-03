@@ -153,3 +153,7 @@ export interface EvaluationOutput {
   evaluationDate: string;
   skillRatings: SkillRatingOutput[];
 }
+
+export interface EvaluationCountOutput {
+  count: number;
+}

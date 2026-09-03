@@ -28,8 +28,9 @@ export function PlayerDetail() {
         setError(null);
         setProfile(output);
         try {
-          const evals = await api.players.listReceivedEvaluations(playerId);
-          if (!cancelled) setEvaluationCount(evals.length);
+          const output =
+            await api.players.getReceivedEvaluationCount(playerId);
+          if (!cancelled) setEvaluationCount(output.count);
         } catch {
           if (!cancelled) setEvaluationCount(null);
         }

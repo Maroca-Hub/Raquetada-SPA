@@ -28,8 +28,8 @@ export function Profile() {
       setError(null);
       setProfile(me);
       try {
-        const evals = await api.players.listReceivedEvaluations(me.id);
-        setEvaluationCount(evals.length);
+        const output = await api.players.getReceivedEvaluationCount(me.id);
+        setEvaluationCount(output.count);
       } catch {
         setEvaluationCount(null);
       }
