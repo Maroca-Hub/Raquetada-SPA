@@ -3,6 +3,7 @@ import { useApi } from "../../hooks/useApi";
 import type { MatchOutput } from "../../types";
 import {
   formatDateBR,
+  futureLeadError,
   maskDateBR,
   maskTimeBR,
   parseDateTimeBR,
@@ -70,8 +71,9 @@ export function EditMatchModal({
       setError("Data ou hora inválida. Use dd/mm/aaaa e hh:mm.");
       return;
     }
-    if (dateTime.getTime() <= Date.now()) {
-      setError("Escolha uma data e hora no futuro.");
+    const leadError = futureLeadError(dateTime);
+    if (leadError) {
+      setError(leadError);
       return;
     }
 

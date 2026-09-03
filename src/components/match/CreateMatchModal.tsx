@@ -5,6 +5,7 @@ import type { PadelPosition } from "../../types";
 import { POSITION_LABELS } from "../../services/api";
 import {
   formatDateBR,
+  futureLeadError,
   maskDateBR,
   maskTimeBR,
   parseDateTimeBR,
@@ -73,8 +74,9 @@ export function CreateMatchModal({
       setError("Data ou hora inválida. Use dd/mm/aaaa e hh:mm.");
       return;
     }
-    if (dateTime.getTime() <= Date.now()) {
-      setError("Escolha uma data e hora no futuro.");
+    const leadError = futureLeadError(dateTime);
+    if (leadError) {
+      setError(leadError);
       return;
     }
 

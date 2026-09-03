@@ -3,9 +3,11 @@
 /** Progressive mask for a `dd/mm/aaaa` text field. */
 export function maskDateBR(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 8);
-  const parts = [digits.slice(0, 2), digits.slice(2, 4), digits.slice(4, 8)].filter(
-    (p) => p.length > 0,
-  );
+  const parts = [
+    digits.slice(0, 2),
+    digits.slice(2, 4),
+    digits.slice(4, 8),
+  ].filter((p) => p.length > 0);
   return parts.join("/");
 }
 
@@ -38,10 +40,20 @@ export function formatDateBR(date: Date): string {
   });
 }
 
-/**
- * Parses `dd/mm/aaaa` + `HH:mm` into a Date in local time.
- * Returns null when either part is malformed or not a real calendar date/time.
- */
+export const MIN_MATCH_LEAD_MS = 5 * 60 * 1000;
+
+export function futureLeadError(
+  when: Date,
+  now: Date = new Date(),
+): string | null {
+  if (when.getTime() >= now.getTime() + MIN_MATCH_LEAD_MS) return null;
+  const sameDay = when.toDateString() === now.toDateString();
+  if (when.getTime() < now.getTime() && !sameDay) {
+    return "Essa data já passou. Escolha uma data futura.";
+  }
+  return "Escolha um horário pelo menos 5 minutos no futuro.";
+}
+
 export function parseDateTimeBR(dateStr: string, timeStr: string): Date | null {
   const d = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(dateStr.trim());
   const t = /^(\d{2}):(\d{2})$/.exec(timeStr.trim());
