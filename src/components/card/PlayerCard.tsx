@@ -5,6 +5,21 @@ import { Avatar } from "../common/Avatar";
 const clampPct = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 const scale10 = (v?: number) => Math.round((v ?? 0) * 10);
 
+// Safari's html-to-image pipeline (SVG foreignObject → canvas) paints live
+// CSS `radial-gradient()` as a hard-edged rectangle instead of a fade — a
+// known WebKit rasterization defect that doesn't affect linear gradients or
+// real images. Baking the same fade into a tiny self-contained SVG image and
+// referencing it as a background-image sidesteps the bug: it's drawn as a
+// bitmap, the same code path that already renders the player photo correctly.
+const GLOW_SVG =
+  "<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'>" +
+  "<defs><radialGradient id='g' cx='100%' cy='0%' r='75%'>" +
+  "<stop offset='0%' stop-color='rgba(210,240,0,0.35)'/>" +
+  "<stop offset='100%' stop-color='rgba(210,240,0,0)'/>" +
+  "</radialGradient></defs>" +
+  "<rect width='200' height='200' fill='url(#g)'/></svg>";
+const GLOW_DATA_URL = `data:image/svg+xml;base64,${btoa(GLOW_SVG)}`;
+
 interface PlayerCardProps {
   profile: PlayerProfileOutput;
   showProgress?: boolean;
@@ -33,14 +48,10 @@ export function PlayerCard({
         forExport
           ? {
               padding: 24,
-              // Painted as a background layer on the card itself instead of an
-              // absolutely-positioned child: Safari's html-to-image rasterizer
-              // (SVG foreignObject → canvas) mispositions absolutely-positioned
-              // descendants of an `overflow:hidden` ancestor, so the glow ends
-              // up floating in the wrong spot. A background-image always
-              // resolves against this element's own box, so it can't drift.
-              backgroundImage:
-                "radial-gradient(circle at 100% 0%, rgba(210, 240, 0, 0.22), rgba(210, 240, 0, 0) 55%), linear-gradient(145deg, #1f1f1e 0%, #111111 60%, #0a0a0a 100%)",
+              backgroundImage: `url("${GLOW_DATA_URL}"), linear-gradient(145deg, #1f1f1e 0%, #111111 60%, #0a0a0a 100%)`,
+              backgroundPosition: "top right, top left",
+              backgroundRepeat: "no-repeat, no-repeat",
+              backgroundSize: "200px 200px, auto",
             }
           : { padding: 24 }
       }
