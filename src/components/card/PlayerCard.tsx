@@ -11,13 +11,15 @@ const scale10 = (v?: number) => Math.round((v ?? 0) * 10);
 // real images. Baking the same fade into a tiny self-contained SVG image and
 // referencing it as a background-image sidesteps the bug: it's drawn as a
 // bitmap, the same code path that already renders the player photo correctly.
+// Centered fade (cx/cy 50%) so this reads as a glow diffusing outward from
+// the middle, matching where it's placed: directly behind the avatar.
 const GLOW_SVG =
-  "<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'>" +
-  "<defs><radialGradient id='g' cx='100%' cy='0%' r='75%'>" +
+  "<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'>" +
+  "<defs><radialGradient id='g' cx='50%' cy='50%' r='50%'>" +
   "<stop offset='0%' stop-color='rgba(210,240,0,0.35)'/>" +
   "<stop offset='100%' stop-color='rgba(210,240,0,0)'/>" +
   "</radialGradient></defs>" +
-  "<rect width='200' height='200' fill='url(#g)'/></svg>";
+  "<rect width='260' height='260' fill='url(#g)'/></svg>";
 const GLOW_DATA_URL = `data:image/svg+xml;base64,${btoa(GLOW_SVG)}`;
 
 interface PlayerCardProps {
@@ -42,20 +44,7 @@ export function PlayerCard({
   forExport = false,
 }: PlayerCardProps) {
   return (
-    <div
-      className="player-card-fut"
-      style={
-        forExport
-          ? {
-              padding: 24,
-              backgroundImage: `url("${GLOW_DATA_URL}"), linear-gradient(145deg, #1f1f1e 0%, #111111 60%, #0a0a0a 100%)`,
-              backgroundPosition: "top right, top left",
-              backgroundRepeat: "no-repeat, no-repeat",
-              backgroundSize: "200px 200px, auto",
-            }
-          : { padding: 24 }
-      }
-    >
+    <div className="player-card-fut" style={{ padding: 24 }}>
       {!forExport && (
         <div
           className="glow-ambient"
@@ -140,17 +129,36 @@ export function PlayerCard({
           marginBottom: 20,
         }}
       >
-        <Avatar
-          src={profile.imageUrl}
-          name={profile.name}
-          size={104}
-          className="neon-glow"
-          style={{
-            border: "3px solid var(--primary-fixed)",
-            marginBottom: 14,
-          }}
-          letterColor="var(--primary-fixed)"
-        />
+        <div style={{ position: "relative" }}>
+          {forExport && (
+            <img
+              src={GLOW_DATA_URL}
+              alt=""
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                width: 260,
+                height: 260,
+                transform: "translate(-50%, -50%)",
+                pointerEvents: "none",
+              }}
+            />
+          )}
+          <Avatar
+            src={profile.imageUrl}
+            name={profile.name}
+            size={104}
+            className="neon-glow"
+            style={{
+              position: "relative",
+              border: "3px solid var(--primary-fixed)",
+              marginBottom: 14,
+            }}
+            letterColor="var(--primary-fixed)"
+          />
+        </div>
 
         <h2
           className="font-display"
