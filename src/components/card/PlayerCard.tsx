@@ -27,33 +27,36 @@ export function PlayerCard({
   forExport = false,
 }: PlayerCardProps) {
   return (
-    <div className="player-card-fut" style={{ padding: 24 }}>
-      <div
-        className={forExport ? undefined : "glow-ambient"}
-        style={
-          forExport
-            ? {
-                // A radial gradient rasterizes identically to the blurred
-                // circle html-to-image mangles, and stays inside the card.
-                position: "absolute",
-                width: 200,
-                height: 200,
-                top: -50,
-                right: -50,
-                borderRadius: "50%",
-                background:
-                  "radial-gradient(circle, rgba(210, 240, 0, 0.18), rgba(210, 240, 0, 0) 70%)",
-                pointerEvents: "none",
-              }
-            : {
-                width: 140,
-                height: 140,
-                background: "rgba(210, 240, 0, 0.15)",
-                top: -20,
-                right: -20,
-              }
-        }
-      />
+    <div
+      className="player-card-fut"
+      style={
+        forExport
+          ? {
+              padding: 24,
+              // Painted as a background layer on the card itself instead of an
+              // absolutely-positioned child: Safari's html-to-image rasterizer
+              // (SVG foreignObject → canvas) mispositions absolutely-positioned
+              // descendants of an `overflow:hidden` ancestor, so the glow ends
+              // up floating in the wrong spot. A background-image always
+              // resolves against this element's own box, so it can't drift.
+              backgroundImage:
+                "radial-gradient(circle at 100% 0%, rgba(210, 240, 0, 0.22), rgba(210, 240, 0, 0) 55%), linear-gradient(145deg, #1f1f1e 0%, #111111 60%, #0a0a0a 100%)",
+            }
+          : { padding: 24 }
+      }
+    >
+      {!forExport && (
+        <div
+          className="glow-ambient"
+          style={{
+            width: 140,
+            height: 140,
+            background: "rgba(210, 240, 0, 0.15)",
+            top: -20,
+            right: -20,
+          }}
+        />
+      )}
 
       {/* Top bar: total rating + form indicator */}
       <div
