@@ -7,8 +7,18 @@ const KEY = "lob_dev_session";
 
 export const DEV_USER = "ana.souza";
 
+// Purge any dev-session flag left on devices that used the test account
+// before it was removed from production builds.
+if (!import.meta.env.DEV) {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // ignore — storage unavailable
+  }
+}
+
 export function isDevSession(): boolean {
-  return localStorage.getItem(KEY) === "true";
+  return import.meta.env.DEV && localStorage.getItem(KEY) === "true";
 }
 
 export function enableDevSession(): void {
